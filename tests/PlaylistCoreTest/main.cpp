@@ -17,6 +17,7 @@ CONSOLE_APP_MAIN
         CHECK(r.document.tracks[0].requested_title == "Long, Cool Song");
         CHECK(r.document.tracks[0].ResolvedUri() == "spotify:track:a");
         CHECK(r.document.tracks[0].state == TRACK_EXACT);
+        CHECK(r.document.GetResolvedCount() == 2);
     }
 
     {
@@ -60,6 +61,16 @@ CONSOLE_APP_MAIN
     }
 
     {
+        Vector<String> reference = { "c", "a" };
+        Vector<String> target = { "a", "playlistlab:unavailable:1", "x", "c" };
+        PlaylistPlan p = BuildPlaylistPlan(reference, target, ORDER_REFERENCE_SLOTS);
+        Vector<String> expected = { "c", "playlistlab:unavailable:1", "x", "a" };
+        CHECK(p.desired_uris == expected);
+        CHECK(ApplyMoveSequence(clone(target), p.moves) == expected);
+        CHECK(p.desired_uris[1] == "playlistlab:unavailable:1");
+    }
+
+    {
         TrackEntry request;
         request.requested_title = "Green Door";
         request.requested_artist = "Shakin' Stevens";
@@ -69,6 +80,33 @@ CONSOLE_APP_MAIN
         CHECK(ScoreTrackCandidate(request, candidate) >= 90);
         candidate.artist = "Different Artist";
         CHECK(ScoreTrackCandidate(request, candidate) < 90);
+    }
+
+    {
+        TrackEntry review;
+        review.requested_title = "Is This Love";
+        SpotifyTrack& candidate = review.candidates.Add();
+        candidate.uri = "spotify:track:unconfirmed";
+        candidate.title = "Is This Love";
+        candidate.artist = "Candidate Artist";
+        review.selected_candidate = 0;
+        review.state = TRACK_REVIEW;
+        review.confidence = 65;
+        CHECK(!review.IsResolved());
+        CHECK(review.ResolvedUri().IsEmpty());
+        CHECK(review.ResolvedTitle() == "Is This Love");
+
+        review.SelectCandidate(0, TRACK_EXACT);
+        CHECK(review.IsResolved());
+        CHECK(review.ResolvedUri() == "spotify:track:unconfirmed");
+    }
+
+    {
+        SpotifyTrack episode;
+        episode.type = "episode";
+        episode.uri = "spotify:episode:e";
+        CHECK(episode.IsValid());
+        CHECK(!episode.placeholder);
     }
 
     Cout() << checks << " checks completed\n";

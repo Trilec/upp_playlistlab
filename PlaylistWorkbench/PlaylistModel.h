@@ -20,6 +20,8 @@ struct SpotifyTrack : Moveable<SpotifyTrack> {
     String artist;
     String album;
     String isrc;
+    String type = "track";
+    bool   placeholder = false;
     int    duration_ms = 0;
 
     bool IsValid() const { return !uri.IsEmpty(); }
