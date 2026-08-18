@@ -1,0 +1,9 @@
+uses
+    Core,
+    PlaylistWorkbench;
+
+file
+    main.cpp;
+
+mainconfig
+    "" = "CONSOLE";

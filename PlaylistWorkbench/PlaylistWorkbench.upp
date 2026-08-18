@@ -1,0 +1,10 @@
+uses
+    Core;
+
+file
+    PlaylistModel.h,
+    PlaylistModel.cpp,
+    PlaylistIO.h,
+    PlaylistIO.cpp,
+    PlaylistPlanner.h,
+    PlaylistPlanner.cpp;
