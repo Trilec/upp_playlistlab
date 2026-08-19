@@ -104,6 +104,7 @@ CONSOLE_APP_MAIN
     {
         TrackEntry review;
         review.requested_title = "Is This Love";
+        review.spotify_uri = "spotify:track:stale-review";
         SpotifyTrack& candidate = review.candidates.Add();
         candidate.uri = "spotify:track:unconfirmed";
         candidate.title = "Is This Love";
@@ -202,16 +203,21 @@ CONSOLE_APP_MAIN
         TrackEntry review;
         SpotifyTrack& candidate = review.candidates.Add();
         candidate.uri = "spotify:track:review";
+        review.spotify_uri = "spotify:track:stale-review";
         review.selected_candidate = 0;
         review.state = TRACK_REVIEW;
         document.tracks.Add(pick(review));
 
         TrackEntry missing;
+        missing.spotify_uri = "spotify:track:stale-missing";
         missing.state = TRACK_MISSING;
+        PL_CHECK(missing.ResolvedUri().IsEmpty());
         document.tracks.Add(pick(missing));
 
         TrackEntry unresolved;
+        unresolved.spotify_uri = "spotify:track:stale-unresolved";
         unresolved.state = TRACK_UNRESOLVED;
+        PL_CHECK(unresolved.ResolvedUri().IsEmpty());
         document.tracks.Add(pick(unresolved));
 
         PlaylistPublishPreview preview = BuildPlaylistPublishPreview(document, Vector<String>(), ORDER_REFERENCE_FIRST);

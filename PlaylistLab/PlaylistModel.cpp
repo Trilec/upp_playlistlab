@@ -16,11 +16,13 @@ const SpotifyTrack *TrackEntry::GetResolved() const
 
 String TrackEntry::ResolvedUri() const
 {
-    // A best candidate can be preselected for UI review, but it must not become
-    // publishable identity until the user confirms it or auto-match accepts it.
-    if(state != TRACK_REVIEW)
-        if(const SpotifyTrack *track = GetResolved())
-            return track->uri;
+    // Publishable identity is state-gated, not merely field-backed. Review,
+    // missing and unresolved rows must stay non-publishable even if stale URI
+    // data happens to remain on the entry.
+    if(state != TRACK_EXACT && state != TRACK_AUTO)
+        return String();
+    if(const SpotifyTrack *track = GetResolved())
+        return track->uri;
     return spotify_uri;
 }
 
