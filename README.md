@@ -1,21 +1,23 @@
 # upp_playlistlab
 
-U++ playlist/set-list workbench for turning pasted text, CSV files, and Spotify playlists into reviewable ordered playlists.
+U++ playlist/set-list application for turning pasted text, CSV files, and Spotify playlists into reviewable ordered playlists.
 
-## PlaylistWorkbench
+## PlaylistLab
 
-`PlaylistWorkbench/` is the main GUI package. The first release is designed around four workflows:
+`PlaylistLab/` is the main GUI package. The application is designed around four workflows:
 
 1. import a CSV or paste a plain-text set list;
-2. resolve requested songs against Spotify while keeping ambiguous matches visible;
-3. load an owned/collaborative Spotify playlist and compare/reorder it against the working list;
-4. create a new Spotify playlist, or safely update/reorder an existing one after previewing the plan.
+2. resolve requested songs against Spotify while keeping ambiguous matches visible until explicitly confirmed;
+3. load an owned/collaborative Spotify playlist and compare/reorder it against the local working list;
+4. preview the deterministic change plan before any create/update operation is allowed to modify Spotify.
 
-The workbench uses Spotify's current Web API `/items` playlist endpoints and Authorization Code with PKCE. Spotify Desktop does not need to be running; changes are made to the account and appear in normal Spotify clients.
+The local `PlaylistDocument` is the authored state. Spotify is a provider through the Web API rather than a Spotify Desktop automation layer, so imported lists can be edited and tested without a network connection.
+
+The current GUI checkpoint supports local import/export and drag ordering, Spotify target loading, selected-track resolution, explicit candidate confirmation, Reference Slots / Reference First planning, and a read-only publish preview. Spotify mutation remains intentionally disabled until that preview workflow passes Windows acceptance.
 
 ## Repository layout
 
-- `PlaylistWorkbench/` — U++ GUI application and playlist/Spotify implementation.
+- `PlaylistLab/` — U++ GUI application and playlist/Spotify implementation.
 - `tests/PlaylistCoreTest/` — deterministic non-network core tests.
 - `examples/` — sample import files.
 - `docs/` — design notes, setup instructions and `ACTIVE_WORK.md` recovery state.
@@ -23,7 +25,7 @@ The workbench uses Spotify's current Web API `/items` playlist endpoints and Aut
 ## Dependencies
 
 - U++ Core/CtrlLib
-- U++ `Ui` package from `Trilec/upp_Ui` for the modern demo-style shell
-- Spotify Premium/developer application for live Spotify operations
+- U++ `Ui` package from `Trilec/upp_Ui` for the model-backed application shell
+- Spotify developer application for live Spotify read/resolve workflows
 
 See `docs/SPOTIFY_SETUP.md` before connecting an account.

@@ -1,5 +1,5 @@
-#ifndef _PlaylistWorkbench_SpotifyAuth_h_
-#define _PlaylistWorkbench_SpotifyAuth_h_
+#ifndef _PlaylistLab_SpotifyAuth_h_
+#define _PlaylistLab_SpotifyAuth_h_
 
 #include <Core/Core.h>
 

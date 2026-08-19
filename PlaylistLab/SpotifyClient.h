@@ -1,5 +1,5 @@
-#ifndef _PlaylistWorkbench_SpotifyClient_h_
-#define _PlaylistWorkbench_SpotifyClient_h_
+#ifndef _PlaylistLab_SpotifyClient_h_
+#define _PlaylistLab_SpotifyClient_h_
 
 #include "PlaylistModel.h"
 #include "PlaylistPlanner.h"

@@ -1,5 +1,5 @@
-#ifndef _PlaylistWorkbench_PlaylistModel_h_
-#define _PlaylistWorkbench_PlaylistModel_h_
+#ifndef _PlaylistLab_PlaylistModel_h_
+#define _PlaylistLab_PlaylistModel_h_
 
 #include <Core/Core.h>
 
