@@ -1,0 +1,2 @@
+UPP = "E:/apps/github/upp_playlistlab/examples;E:/apps/github/upp_playlistlab/tests;E:/apps/github/upp_playlistlab/PlaylistLab;E:/apps/github/upp_Ui;E:/apps/github/upp_statemachine;E:/apps/github/upp_animation;E:/upp-18468/uppsrc";
+OUTPUT = "E:/apps/github/upp_playlistlab/build";

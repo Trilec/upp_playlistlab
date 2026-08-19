@@ -1,6 +1,9 @@
 #include "SpotifyAuth.h"
 
 namespace Upp {
+
+const int SpotifyAuth::CALLBACK_PORT;
+
 namespace {
 
 const char *AUTH_URL  = "https://accounts.spotify.com/authorize";

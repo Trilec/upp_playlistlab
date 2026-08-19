@@ -1,6 +1,6 @@
 uses
     Core,
-    PlaylistWorkbench;
+    PlayListLab;
 
 file
     main.cpp;

@@ -1,5 +1,5 @@
-#include <PlaylistWorkbench/PlaylistIO.h>
-#include <PlaylistWorkbench/PlaylistPlanner.h>
+#include <PlaylistLab/PlaylistIO.h>
+#include <PlaylistLab/PlaylistPlanner.h>
 
 using namespace Upp;
 
