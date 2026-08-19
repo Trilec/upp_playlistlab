@@ -17,4 +17,4 @@ file
     main.cpp;
 
 mainconfig
-    "" = "GUI";
+    "" = "GUI MT";
