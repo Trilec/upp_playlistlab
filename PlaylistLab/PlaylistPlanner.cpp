@@ -37,6 +37,11 @@ void MoveOne(Vector<String>& values, int from, int before)
     values.Insert(before, pick(value));
 }
 
+bool IsSpotifyPlaylistItemUri(const String& uri)
+{
+    return uri.StartsWith("spotify:track:") || uri.StartsWith("spotify:episode:");
+}
+
 } // namespace
 
 Vector<PlaylistMove> BuildMoveSequence(const Vector<String>& current_uris,
@@ -133,6 +138,44 @@ PlaylistPlan BuildPlaylistPlan(const Vector<String>& reference_uris,
 
     plan.moves = BuildMoveSequence(plan.original_uris, plan.desired_uris);
     return plan;
+}
+
+PlaylistPublishPreview BuildPlaylistPublishPreview(const PlaylistDocument& document,
+                                                   const Vector<String>& target_uris,
+                                                   PlaylistOrderMode mode)
+{
+    PlaylistPublishPreview preview;
+    preview.reference_count = document.tracks.GetCount();
+
+    for(const TrackEntry& entry : document.tracks) {
+        switch(entry.state) {
+        case TRACK_REVIEW:     preview.review_count++; break;
+        case TRACK_MISSING:    preview.missing_count++; break;
+        case TRACK_UNRESOLVED: preview.unresolved_count++; break;
+        default: break;
+        }
+
+        String uri = entry.ResolvedUri();
+        if(uri.IsEmpty())
+            continue;
+        if(!IsSpotifyPlaylistItemUri(uri)) {
+            preview.invalid_uri_count++;
+            continue;
+        }
+
+        preview.reference_uris.Add(uri);
+        preview.publishable_count++;
+    }
+
+    PlaylistPlan initial = BuildPlaylistPlan(preview.reference_uris, target_uris, mode);
+    preview.add_uris = clone(initial.missing_reference_uris);
+
+    Vector<String> augmented_target = clone(target_uris);
+    for(const String& uri : preview.add_uris)
+        augmented_target.Add(uri);
+
+    preview.reorder_plan = BuildPlaylistPlan(preview.reference_uris, augmented_target, mode);
+    return preview;
 }
 
 } // namespace Upp

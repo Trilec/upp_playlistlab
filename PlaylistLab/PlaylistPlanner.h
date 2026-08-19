@@ -1,5 +1,5 @@
-#ifndef _PlaylistWorkbench_PlaylistPlanner_h_
-#define _PlaylistWorkbench_PlaylistPlanner_h_
+#ifndef _PlaylistLab_PlaylistPlanner_h_
+#define _PlaylistLab_PlaylistPlanner_h_
 
 #include "PlaylistModel.h"
 
@@ -26,9 +26,29 @@ struct PlaylistPlan {
     bool IsNoOp() const { return moves.IsEmpty(); }
 };
 
+struct PlaylistPublishPreview {
+    Vector<String> reference_uris;
+    Vector<String> add_uris;
+    PlaylistPlan   reorder_plan;
+
+    int reference_count = 0;
+    int publishable_count = 0;
+    int review_count = 0;
+    int missing_count = 0;
+    int unresolved_count = 0;
+    int invalid_uri_count = 0;
+
+    int  GetBlockingCount() const { return max(0, reference_count - publishable_count); }
+    bool CanPublish() const        { return reference_count > 0 && GetBlockingCount() == 0; }
+    bool IsNoOp() const            { return add_uris.IsEmpty() && reorder_plan.IsNoOp(); }
+};
+
 PlaylistPlan BuildPlaylistPlan(const Vector<String>& reference_uris,
                                const Vector<String>& target_uris,
                                PlaylistOrderMode mode);
+PlaylistPublishPreview BuildPlaylistPublishPreview(const PlaylistDocument& document,
+                                                   const Vector<String>& target_uris,
+                                                   PlaylistOrderMode mode);
 Vector<PlaylistMove> BuildMoveSequence(const Vector<String>& current_uris,
                                        const Vector<String>& desired_uris);
 Vector<String> ApplyMoveSequence(Vector<String> current, const Vector<PlaylistMove>& moves);
