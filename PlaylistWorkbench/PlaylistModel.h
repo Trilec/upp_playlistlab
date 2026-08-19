@@ -56,6 +56,7 @@ struct PlaylistDocument {
     bool               dirty = false;
 
     void Clear();
+    bool MoveTrack(int from, int before);
     int  GetResolvedCount() const;
     int  GetReviewCount() const;
     int  GetMissingCount() const;

@@ -66,6 +66,23 @@ void PlaylistDocument::Clear()
     dirty = false;
 }
 
+bool PlaylistDocument::MoveTrack(int from, int before)
+{
+    int count = tracks.GetCount();
+    if(from < 0 || from >= count || before < 0 || before > count)
+        return false;
+    if(before == from || before == from + 1)
+        return false;
+
+    TrackEntry moved = pick(tracks[from]);
+    tracks.Remove(from);
+    if(before > from)
+        before--;
+    tracks.Insert(before, pick(moved));
+    dirty = true;
+    return true;
+}
+
 int PlaylistDocument::GetResolvedCount() const
 {
     int n = 0;

@@ -30,6 +30,25 @@ CONSOLE_APP_MAIN
     }
 
     {
+        PlaylistDocument document;
+        for(const char *title : { "A", "B", "C", "D" }) {
+            TrackEntry entry;
+            entry.requested_title = title;
+            document.tracks.Add(pick(entry));
+        }
+        CHECK(document.MoveTrack(1, 4));
+        CHECK(document.tracks[0].requested_title == "A");
+        CHECK(document.tracks[1].requested_title == "C");
+        CHECK(document.tracks[2].requested_title == "D");
+        CHECK(document.tracks[3].requested_title == "B");
+        CHECK(document.dirty);
+        CHECK(document.MoveTrack(3, 0));
+        CHECK(document.tracks[0].requested_title == "B");
+        CHECK(!document.MoveTrack(0, 1));
+        CHECK(!document.MoveTrack(-1, 0));
+    }
+
+    {
         Vector<String> reference = { "c", "a", "d" };
         Vector<String> target = { "a", "x", "b", "c", "y", "d" };
         PlaylistPlan p = BuildPlaylistPlan(reference, target, ORDER_REFERENCE_SLOTS);

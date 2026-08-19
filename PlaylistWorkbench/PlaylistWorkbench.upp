@@ -1,5 +1,7 @@
 uses
-    Core;
+    Core,
+    CtrlLib,
+    Ui;
 
 file
     PlaylistModel.h,
@@ -11,4 +13,8 @@ file
     SpotifyAuth.h,
     SpotifyAuth.cpp,
     SpotifyClient.h,
-    SpotifyClient.cpp;
+    SpotifyClient.cpp,
+    main.cpp;
+
+mainconfig
+    "" = "GUI";
