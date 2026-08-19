@@ -40,13 +40,21 @@ String TrackEntry::ResolvedArtist() const
 
 void TrackEntry::SelectCandidate(int i, TrackMatchState new_state)
 {
-    if(i < 0 || i >= candidates.GetCount()) {
+    if(i < 0 || i >= candidates.GetCount() || !candidates[i].IsValid()) {
         ClearResolution();
         return;
     }
+    if(new_state != TRACK_EXACT && new_state != TRACK_AUTO && new_state != TRACK_REVIEW) {
+        ClearResolution();
+        return;
+    }
+
     selected_candidate = i;
-    spotify_uri = candidates[i].uri;
     state = new_state;
+    if(new_state == TRACK_REVIEW)
+        spotify_uri.Clear();
+    else
+        spotify_uri = candidates[i].uri;
 }
 
 void TrackEntry::ClearResolution()

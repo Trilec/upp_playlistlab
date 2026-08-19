@@ -115,9 +115,18 @@ CONSOLE_APP_MAIN
         PL_CHECK(review.ResolvedUri().IsEmpty());
         PL_CHECK(review.ResolvedTitle() == "Is This Love");
 
+        review.SelectCandidate(0, TRACK_REVIEW);
+        PL_CHECK(review.state == TRACK_REVIEW);
+        PL_CHECK(!review.IsResolved());
+        PL_CHECK(review.ResolvedUri().IsEmpty());
+
         review.SelectCandidate(0, TRACK_EXACT);
         PL_CHECK(review.IsResolved());
         PL_CHECK(review.ResolvedUri() == "spotify:track:unconfirmed");
+
+        review.SelectCandidate(0, TRACK_MISSING);
+        PL_CHECK(review.state == TRACK_UNRESOLVED);
+        PL_CHECK(!review.IsResolved());
     }
 
     {
