@@ -1180,6 +1180,8 @@ GUI_APP_MAIN
 {
     PlaylistLabWindow window;
     window.OpenMain();
+    window.Minimize(false);
+    window.SetForeground();
     window.Run();
 }
 
