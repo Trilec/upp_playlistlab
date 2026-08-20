@@ -49,6 +49,25 @@ String JoinArtistNames(const ValueArray& artists)
     return out;
 }
 
+String PickImageUrl(const ValueArray& images)
+{
+    // Spotify normally orders playlist/album images largest first. Prefer the
+    // smallest usable image for compact PlaylistLab rows and cache it locally.
+    for(int i = images.GetCount() - 1; i >= 0; --i) {
+        if(!IsValueMap(images[i]))
+            continue;
+        String url = VString(ValueMap(images[i]), "url");
+        if(!url.IsEmpty())
+            return url;
+    }
+    return String();
+}
+
+String SpotifyWebUrl(const ValueMap& map)
+{
+    return VString(VMap(map, "external_urls"), "spotify");
+}
+
 String JsonBodyForUris(const Vector<String>& uris, int from, int count)
 {
     JsonArray array;
@@ -208,16 +227,20 @@ bool SpotifyClient::JsonTrack(const Value& value, SpotifyTrack& track) const
     track.id = VString(map, "id");
     track.uri = VString(map, "uri");
     track.title = VString(map, "name");
+    track.spotify_url = SpotifyWebUrl(map);
     track.duration_ms = VInt(map, "duration_ms");
     if(type == "track") {
+        ValueMap album = VMap(map, "album");
         track.artist = JoinArtistNames(VArray(map, "artists"));
-        track.album = VString(VMap(map, "album"), "name");
+        track.album = VString(album, "name");
+        track.image_url = PickImageUrl(VArray(album, "images"));
         track.isrc = VString(VMap(map, "external_ids"), "isrc");
     }
     else {
         ValueMap show = VMap(map, "show");
         track.artist = VString(show, "name");
         track.album = "Podcast episode";
+        track.image_url = PickImageUrl(VArray(map, "images"));
     }
     return !track.uri.IsEmpty();
 }
@@ -235,7 +258,7 @@ bool SpotifyClient::GetCurrentUser(String& user_id, String& display_name)
     return !user_id.IsEmpty();
 }
 
-bool SpotifyClient::GetEditablePlaylists(Vector<SpotifyPlaylistInfo>& playlists)
+bool SpotifyClient::GetPlaylists(Vector<SpotifyPlaylistInfo>& playlists)
 {
     playlists.Clear();
     String user_id, display_name;
@@ -256,8 +279,6 @@ bool SpotifyClient::GetEditablePlaylists(Vector<SpotifyPlaylistInfo>& playlists)
             ValueMap owner = VMap(item, "owner");
             bool collaborative = VBool(item, "collaborative");
             String owner_id = VString(owner, "id");
-            if(owner_id != user_id && !collaborative)
-                continue;
 
             SpotifyPlaylistInfo& info = playlists.Add();
             info.id = VString(item, "id");
@@ -266,12 +287,29 @@ bool SpotifyClient::GetEditablePlaylists(Vector<SpotifyPlaylistInfo>& playlists)
             info.owner_id = owner_id;
             info.owner_name = VString(owner, "display_name");
             info.snapshot_id = VString(item, "snapshot_id");
+            info.image_url = PickImageUrl(VArray(item, "images"));
+            info.spotify_url = SpotifyWebUrl(item);
             info.item_count = VInt(VMap(item, "items"), "total", VInt(VMap(item, "tracks"), "total"));
             info.collaborative = collaborative;
             info.is_public = VBool(item, "public");
+            info.editable = owner_id == user_id || collaborative;
         }
         next = VString(page, "next");
     }
+    return true;
+}
+
+bool SpotifyClient::GetEditablePlaylists(Vector<SpotifyPlaylistInfo>& playlists)
+{
+    Vector<SpotifyPlaylistInfo> all;
+    if(!GetPlaylists(all))
+        return false;
+
+    playlists.Clear();
+    playlists.Reserve(all.GetCount());
+    for(SpotifyPlaylistInfo& info : all)
+        if(info.editable)
+            playlists.Add(pick(info));
     return true;
 }
 
@@ -455,8 +493,11 @@ bool SpotifyClient::CreatePlaylist(const String& name, bool is_public, const Str
     playlist.uri = VString(item, "uri");
     playlist.name = VString(item, "name");
     playlist.snapshot_id = VString(item, "snapshot_id");
+    playlist.image_url = PickImageUrl(VArray(item, "images"));
+    playlist.spotify_url = SpotifyWebUrl(item);
     playlist.is_public = VBool(item, "public");
     playlist.collaborative = VBool(item, "collaborative");
+    playlist.editable = true;
     return !playlist.id.IsEmpty();
 }
 
