@@ -9,11 +9,11 @@ U++ playlist/set-list application for turning pasted text, CSV files, and Spotif
 1. import a CSV or paste a plain-text set list;
 2. resolve requested songs against Spotify while keeping ambiguous matches visible until explicitly confirmed;
 3. load an owned/collaborative Spotify playlist and compare/reorder it against the local working list;
-4. preview the deterministic change plan before any create/update operation is allowed to modify Spotify.
+4. inspect a deterministic change preview, then explicitly publish that exact plan to Spotify.
 
 The local `PlaylistDocument` is the authored state. Spotify is a provider through the Web API rather than a Spotify Desktop automation layer, so imported lists can be edited and tested without a network connection.
 
-The current GUI checkpoint supports local import/export and drag ordering, Spotify target loading, selected-track resolution, explicit candidate confirmation, Reference Slots / Reference First planning, and a read-only publish preview. Spotify mutation remains intentionally disabled until that preview workflow passes Windows acceptance.
+Spotify mutation is exposed only from a publishable preview and requires a second explicit confirmation. The target is re-read and snapshot-checked before mutation; planned additions are appended without deleting unrelated items, the augmented target is verified before any reorder, and the final target is read back and compared with the exact preview. Stale or partially completed operations are surfaced rather than silently replanned.
 
 ## Repository layout
 
@@ -26,6 +26,6 @@ The current GUI checkpoint supports local import/export and drag ordering, Spoti
 
 - U++ Core/CtrlLib
 - U++ `Ui` package from `Trilec/upp_Ui` for the model-backed application shell
-- Spotify developer application for live Spotify read/resolve workflows
+- Spotify developer application for live Spotify workflows
 
 See `docs/SPOTIFY_SETUP.md` before connecting an account.
