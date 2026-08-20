@@ -1178,7 +1178,9 @@ private:
 
 GUI_APP_MAIN
 {
-    PlaylistLabWindow().Run();
+    PlaylistLabWindow window;
+    window.OpenMain();
+    window.Run();
 }
 
 #endif
