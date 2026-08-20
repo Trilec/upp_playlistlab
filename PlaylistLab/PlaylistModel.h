@@ -20,6 +20,8 @@ struct SpotifyTrack : Moveable<SpotifyTrack> {
     String artist;
     String album;
     String isrc;
+    String image_url;
+    String spotify_url;
     String type = "track";
     bool   placeholder = false;
     int    duration_ms = 0;
@@ -70,9 +72,12 @@ struct SpotifyPlaylistInfo : Moveable<SpotifyPlaylistInfo> {
     String owner_id;
     String owner_name;
     String snapshot_id;
+    String image_url;
+    String spotify_url;
     int    item_count = 0;
     bool   collaborative = false;
     bool   is_public = false;
+    bool   editable = false;
 };
 
 String TrackMatchStateText(TrackMatchState state);
