@@ -42,6 +42,7 @@ public:
     int    GetLastStatus() const                        { return last_status; }
 
     bool GetCurrentUser(String& user_id, String& display_name);
+    bool GetPlaylists(Vector<SpotifyPlaylistInfo>& playlists);
     bool GetEditablePlaylists(Vector<SpotifyPlaylistInfo>& playlists);
     bool GetPlaylistItems(const String& playlist_id, Vector<SpotifyTrack>& tracks, String *snapshot_id = nullptr);
     bool SearchTracks(const TrackEntry& request, Vector<SpotifyTrack>& tracks, int limit = 10);
