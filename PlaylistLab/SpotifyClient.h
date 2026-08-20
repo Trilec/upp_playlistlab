@@ -7,6 +7,31 @@
 
 namespace Upp {
 
+struct SpotifyPublishResult {
+    bool success = false;
+    bool stale = false;
+    bool partial = false;
+    int  added_count = 0;
+    int  move_count = 0;
+    String snapshot_id;
+    String error;
+    Vector<SpotifyTrack> observed_tracks;
+    Vector<String>       observed_uris;
+
+    void Clear()
+    {
+        success = false;
+        stale = false;
+        partial = false;
+        added_count = 0;
+        move_count = 0;
+        snapshot_id.Clear();
+        error.Clear();
+        observed_tracks.Clear();
+        observed_uris.Clear();
+    }
+};
+
 class SpotifyClient {
 public:
     explicit SpotifyClient(SpotifyAuth& auth);
@@ -23,9 +48,14 @@ public:
 
     bool CreatePlaylist(const String& name, bool is_public, const String& description,
                         SpotifyPlaylistInfo& playlist);
-    bool AddItems(const String& playlist_id, const Vector<String>& uris, String *snapshot_id = nullptr);
+    bool AddItems(const String& playlist_id, const Vector<String>& uris,
+                  String *snapshot_id = nullptr, int *added_count = nullptr);
     bool ReorderItems(const String& playlist_id, const Vector<PlaylistMove>& moves,
-                      String& snapshot_id);
+                      String& snapshot_id, int *moves_applied = nullptr);
+    bool ExecutePublishPreview(const String& playlist_id,
+                               const PlaylistPublishPreview& preview,
+                               const String& expected_snapshot_id,
+                               SpotifyPublishResult& result);
 
 private:
     SpotifyAuth& auth;

@@ -59,6 +59,15 @@ String JsonBodyForUris(const Vector<String>& uris, int from, int count)
     return ~json;
 }
 
+Vector<String> TrackUris(const Vector<SpotifyTrack>& tracks)
+{
+    Vector<String> uris;
+    uris.Reserve(tracks.GetCount());
+    for(const SpotifyTrack& track : tracks)
+        uris.Add(track.uri);
+    return uris;
+}
+
 } // namespace
 
 SpotifyClient::SpotifyClient(SpotifyAuth& auth_)
@@ -269,12 +278,13 @@ bool SpotifyClient::GetEditablePlaylists(Vector<SpotifyPlaylistInfo>& playlists)
 bool SpotifyClient::GetPlaylistItems(const String& playlist_id, Vector<SpotifyTrack>& tracks, String *snapshot_id)
 {
     tracks.Clear();
+    String snapshot_before;
     if(snapshot_id) {
         Value meta;
         if(!RequestJson("GET", "/playlists/" + UrlEncode(playlist_id) + "?fields=snapshot_id", String(), meta) ||
            !IsValueMap(meta))
             return false;
-        *snapshot_id = VString(ValueMap(meta), "snapshot_id");
+        snapshot_before = VString(ValueMap(meta), "snapshot_id");
     }
 
     String next = "/playlists/" + UrlEncode(playlist_id) + "/items?limit=50&offset=0&additional_types=episode";
@@ -309,6 +319,20 @@ bool SpotifyClient::GetPlaylistItems(const String& playlist_id, Vector<SpotifyTr
             tracks.Add(pick(track));
         }
         next = VString(page, "next");
+    }
+
+    if(snapshot_id) {
+        Value meta;
+        if(!RequestJson("GET", "/playlists/" + UrlEncode(playlist_id) + "?fields=snapshot_id", String(), meta) ||
+           !IsValueMap(meta))
+            return false;
+        String snapshot_after = VString(ValueMap(meta), "snapshot_id");
+        if(!snapshot_before.IsEmpty() && !snapshot_after.IsEmpty() && snapshot_before != snapshot_after) {
+            last_status = 0;
+            last_error = "Spotify playlist changed while PlaylistLab was reading it; reload and try again.";
+            return false;
+        }
+        *snapshot_id = snapshot_after.IsEmpty() ? snapshot_before : snapshot_after;
     }
     return true;
 }
@@ -436,8 +460,11 @@ bool SpotifyClient::CreatePlaylist(const String& name, bool is_public, const Str
     return !playlist.id.IsEmpty();
 }
 
-bool SpotifyClient::AddItems(const String& playlist_id, const Vector<String>& uris, String *snapshot_id)
+bool SpotifyClient::AddItems(const String& playlist_id, const Vector<String>& uris,
+                             String *snapshot_id, int *added_count)
 {
+    if(added_count)
+        *added_count = 0;
     String latest;
     for(int from = 0; from < uris.GetCount(); from += 100) {
         int count = min(100, uris.GetCount() - from);
@@ -446,6 +473,8 @@ bool SpotifyClient::AddItems(const String& playlist_id, const Vector<String>& ur
                         JsonBodyForUris(uris, from, count), response) || !IsValueMap(response))
             return false;
         latest = VString(ValueMap(response), "snapshot_id");
+        if(added_count)
+            *added_count += count;
     }
     if(snapshot_id && !latest.IsEmpty())
         *snapshot_id = latest;
@@ -453,8 +482,10 @@ bool SpotifyClient::AddItems(const String& playlist_id, const Vector<String>& ur
 }
 
 bool SpotifyClient::ReorderItems(const String& playlist_id, const Vector<PlaylistMove>& moves,
-                                 String& snapshot_id)
+                                 String& snapshot_id, int *moves_applied)
 {
+    if(moves_applied)
+        *moves_applied = 0;
     for(const PlaylistMove& move : moves) {
         Json json;
         json("range_start", move.from)
@@ -470,7 +501,128 @@ bool SpotifyClient::ReorderItems(const String& playlist_id, const Vector<Playlis
         String next_snapshot = VString(ValueMap(response), "snapshot_id");
         if(!next_snapshot.IsEmpty())
             snapshot_id = next_snapshot;
+        if(moves_applied)
+            (*moves_applied)++;
     }
+    return true;
+}
+
+bool SpotifyClient::ExecutePublishPreview(const String& playlist_id,
+                                          const PlaylistPublishPreview& preview,
+                                          const String& expected_snapshot_id,
+                                          SpotifyPublishResult& result)
+{
+    result.Clear();
+    last_error.Clear();
+    last_status = 0;
+
+    if(playlist_id.IsEmpty()) {
+        last_error = "Publish preview has no Spotify target playlist.";
+        result.error = last_error;
+        return false;
+    }
+    if(expected_snapshot_id.IsEmpty()) {
+        last_error = "Publish preview has no target snapshot; reload the Spotify target before publishing.";
+        result.error = last_error;
+        return false;
+    }
+    if(!preview.CanPublish()) {
+        last_error = "Publish preview is blocked by unresolved reference rows.";
+        result.error = last_error;
+        return false;
+    }
+
+    Vector<SpotifyTrack> current_tracks;
+    String current_snapshot;
+    if(!GetPlaylistItems(playlist_id, current_tracks, &current_snapshot)) {
+        result.error = last_error;
+        return false;
+    }
+    Vector<String> current_uris = TrackUris(current_tracks);
+    result.observed_tracks = pick(current_tracks);
+    result.observed_uris = clone(current_uris);
+    result.snapshot_id = current_snapshot;
+
+    String validation_error;
+    if(!ValidatePlaylistPublishPreview(preview, current_uris, &validation_error)) {
+        result.stale = preview.original_target_uris != current_uris;
+        last_status = 0;
+        last_error = validation_error;
+        result.error = last_error;
+        return false;
+    }
+    if(current_snapshot != expected_snapshot_id) {
+        result.stale = true;
+        last_status = 0;
+        last_error = "Spotify target snapshot changed after this preview was created; inspect a fresh preview before publishing.";
+        result.error = last_error;
+        return false;
+    }
+    if(preview.IsNoOp()) {
+        result.success = true;
+        return true;
+    }
+
+    auto recover_observed_state = [&](const String& saved_error, int saved_status) {
+        Vector<SpotifyTrack> observed;
+        String snapshot;
+        if(GetPlaylistItems(playlist_id, observed, &snapshot)) {
+            result.observed_tracks = pick(observed);
+            result.observed_uris = TrackUris(result.observed_tracks);
+            result.snapshot_id = snapshot;
+        }
+        last_error = saved_error;
+        last_status = saved_status;
+        result.error = saved_error;
+    };
+
+    String working_snapshot = current_snapshot;
+    if(!AddItems(playlist_id, preview.add_uris, &working_snapshot, &result.added_count)) {
+        String saved_error = last_error;
+        int saved_status = last_status;
+        result.partial = result.added_count > 0;
+        if(result.partial)
+            recover_observed_state(saved_error, saved_status);
+        else
+            result.error = saved_error;
+        return false;
+    }
+
+    if(!ReorderItems(playlist_id, preview.reorder_plan.moves, working_snapshot, &result.move_count)) {
+        String saved_error = last_error;
+        int saved_status = last_status;
+        result.partial = result.added_count > 0 || result.move_count > 0;
+        if(result.partial)
+            recover_observed_state(saved_error, saved_status);
+        else
+            result.error = saved_error;
+        return false;
+    }
+
+    Vector<SpotifyTrack> final_tracks;
+    String final_snapshot;
+    if(!GetPlaylistItems(playlist_id, final_tracks, &final_snapshot)) {
+        String verify_error = last_error;
+        result.partial = result.added_count > 0 || result.move_count > 0;
+        last_status = 0;
+        last_error = "Spotify mutations were sent, but PlaylistLab could not verify the final target: " + verify_error;
+        result.error = last_error;
+        return false;
+    }
+
+    result.observed_tracks = pick(final_tracks);
+    result.observed_uris = TrackUris(result.observed_tracks);
+    result.snapshot_id = final_snapshot;
+    if(result.observed_uris != preview.reorder_plan.desired_uris) {
+        result.partial = true;
+        last_status = 0;
+        last_error = "Spotify target does not match the exact preview after publishing; reload and inspect before retrying.";
+        result.error = last_error;
+        return false;
+    }
+
+    result.success = true;
+    result.error.Clear();
     return true;
 }
 

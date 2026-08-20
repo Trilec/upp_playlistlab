@@ -27,9 +27,11 @@ struct PlaylistPlan {
 };
 
 struct PlaylistPublishPreview {
+    Vector<String> original_target_uris;
     Vector<String> reference_uris;
     Vector<String> add_uris;
     PlaylistPlan   reorder_plan;
+    PlaylistOrderMode mode = ORDER_REFERENCE_SLOTS;
 
     int reference_count = 0;
     int publishable_count = 0;
@@ -49,6 +51,9 @@ PlaylistPlan BuildPlaylistPlan(const Vector<String>& reference_uris,
 PlaylistPublishPreview BuildPlaylistPublishPreview(const PlaylistDocument& document,
                                                    const Vector<String>& target_uris,
                                                    PlaylistOrderMode mode);
+bool ValidatePlaylistPublishPreview(const PlaylistPublishPreview& preview,
+                                    const Vector<String>& current_target_uris,
+                                    String *error = nullptr);
 Vector<PlaylistMove> BuildMoveSequence(const Vector<String>& current_uris,
                                        const Vector<String>& desired_uris);
 Vector<String> ApplyMoveSequence(Vector<String> current, const Vector<PlaylistMove>& moves);

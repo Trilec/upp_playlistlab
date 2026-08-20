@@ -42,6 +42,23 @@ bool IsSpotifyPlaylistItemUri(const String& uri)
     return uri.StartsWith("spotify:track:") || uri.StartsWith("spotify:episode:");
 }
 
+bool SameMoves(const Vector<PlaylistMove>& a, const Vector<PlaylistMove>& b)
+{
+    if(a.GetCount() != b.GetCount())
+        return false;
+    for(int i = 0; i < a.GetCount(); i++)
+        if(a[i].from != b[i].from || a[i].before != b[i].before || a[i].count != b[i].count)
+            return false;
+    return true;
+}
+
+bool ValidationError(String *error, const String& text)
+{
+    if(error)
+        *error = text;
+    return false;
+}
+
 } // namespace
 
 Vector<PlaylistMove> BuildMoveSequence(const Vector<String>& current_uris,
@@ -145,6 +162,8 @@ PlaylistPublishPreview BuildPlaylistPublishPreview(const PlaylistDocument& docum
                                                    PlaylistOrderMode mode)
 {
     PlaylistPublishPreview preview;
+    preview.original_target_uris = clone(target_uris);
+    preview.mode = mode;
     preview.reference_count = document.tracks.GetCount();
 
     for(const TrackEntry& entry : document.tracks) {
@@ -176,6 +195,44 @@ PlaylistPublishPreview BuildPlaylistPublishPreview(const PlaylistDocument& docum
 
     preview.reorder_plan = BuildPlaylistPlan(preview.reference_uris, augmented_target, mode);
     return preview;
+}
+
+bool ValidatePlaylistPublishPreview(const PlaylistPublishPreview& preview,
+                                    const Vector<String>& current_target_uris,
+                                    String *error)
+{
+    if(error)
+        error->Clear();
+    if(!preview.CanPublish())
+        return ValidationError(error, "Publish preview is blocked by unresolved reference rows.");
+    if(preview.publishable_count != preview.reference_uris.GetCount() ||
+       preview.reference_count != preview.publishable_count)
+        return ValidationError(error, "Publish preview reference counts are inconsistent.");
+    if(preview.original_target_uris != current_target_uris)
+        return ValidationError(error, "Spotify target changed after this preview was created.");
+
+    for(const String& uri : preview.add_uris)
+        if(!IsSpotifyPlaylistItemUri(uri))
+            return ValidationError(error, "Publish preview contains a non-publishable addition URI.");
+
+    PlaylistPlan initial = BuildPlaylistPlan(preview.reference_uris, current_target_uris, preview.mode);
+    if(initial.missing_reference_uris != preview.add_uris)
+        return ValidationError(error, "Publish preview additions no longer match the deterministic plan.");
+
+    Vector<String> augmented_target = clone(current_target_uris);
+    for(const String& uri : preview.add_uris)
+        augmented_target.Add(uri);
+    if(preview.reorder_plan.original_uris != augmented_target)
+        return ValidationError(error, "Publish preview reorder input does not match its planned additions.");
+
+    PlaylistPlan expected = BuildPlaylistPlan(preview.reference_uris, augmented_target, preview.mode);
+    if(expected.desired_uris != preview.reorder_plan.desired_uris ||
+       !SameMoves(expected.moves, preview.reorder_plan.moves))
+        return ValidationError(error, "Publish preview reorder plan is not deterministic for the current target.");
+
+    if(ApplyMoveSequence(clone(augmented_target), preview.reorder_plan.moves) != preview.reorder_plan.desired_uris)
+        return ValidationError(error, "Publish preview move sequence does not produce its desired target.");
+    return true;
 }
 
 } // namespace Upp
