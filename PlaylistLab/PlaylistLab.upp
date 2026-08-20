@@ -2,7 +2,9 @@ uses
 	Core,
 	Core/SSL,
 	CtrlLib,
-	Ui;
+	Ui,
+	plugin/jpg,
+	plugin/png;
 
 file
 	PlaylistModel.h,
@@ -15,6 +17,8 @@ file
 	SpotifyAuth.cpp,
 	SpotifyClient.h,
 	SpotifyClient.cpp,
+	SpotifyImageCache.h,
+	SpotifyImageCache.cpp,
 	main.cpp;
 
 mainconfig
