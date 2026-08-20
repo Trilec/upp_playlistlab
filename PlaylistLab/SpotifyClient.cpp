@@ -542,6 +542,7 @@ bool SpotifyClient::ExecutePublishPreview(const String& playlist_id,
     result.observed_tracks = pick(current_tracks);
     result.observed_uris = clone(current_uris);
     result.snapshot_id = current_snapshot;
+    result.observed = true;
 
     String validation_error;
     if(!ValidatePlaylistPublishPreview(preview, current_uris, &validation_error)) {
@@ -570,6 +571,7 @@ bool SpotifyClient::ExecutePublishPreview(const String& playlist_id,
             result.observed_tracks = pick(observed);
             result.observed_uris = TrackUris(result.observed_tracks);
             result.snapshot_id = snapshot;
+            result.observed = true;
         }
         last_error = saved_error;
         last_status = saved_status;
@@ -613,6 +615,7 @@ bool SpotifyClient::ExecutePublishPreview(const String& playlist_id,
     result.observed_tracks = pick(final_tracks);
     result.observed_uris = TrackUris(result.observed_tracks);
     result.snapshot_id = final_snapshot;
+    result.observed = true;
     if(result.observed_uris != preview.reorder_plan.desired_uris) {
         result.partial = true;
         last_status = 0;

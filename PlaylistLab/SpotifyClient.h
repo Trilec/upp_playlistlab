@@ -11,6 +11,7 @@ struct SpotifyPublishResult {
     bool success = false;
     bool stale = false;
     bool partial = false;
+    bool observed = false;
     int  added_count = 0;
     int  move_count = 0;
     String snapshot_id;
@@ -23,6 +24,7 @@ struct SpotifyPublishResult {
         success = false;
         stale = false;
         partial = false;
+        observed = false;
         added_count = 0;
         move_count = 0;
         snapshot_id.Clear();

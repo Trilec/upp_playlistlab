@@ -275,6 +275,64 @@ CONSOLE_APP_MAIN
         PL_CHECK(preview.reorder_plan.desired_uris[1] == "playlistlab:unavailable:1");
     }
 
+    {
+        PlaylistDocument document;
+        for(const char *uri : { "spotify:track:c", "spotify:track:a" }) {
+            TrackEntry entry;
+            entry.spotify_uri = uri;
+            entry.state = TRACK_EXACT;
+            document.tracks.Add(pick(entry));
+        }
+        Vector<String> target = { "spotify:track:a", "spotify:track:x", "spotify:track:c" };
+        PlaylistPublishPreview preview = BuildPlaylistPublishPreview(document, target, ORDER_REFERENCE_FIRST);
+        String error;
+
+        PL_CHECK(preview.original_target_uris == target);
+        PL_CHECK(preview.mode == ORDER_REFERENCE_FIRST);
+        PL_CHECK(ValidatePlaylistPublishPreview(preview, target, &error));
+        PL_CHECK(error.IsEmpty());
+
+        Vector<String> stale = clone(target);
+        stale.Add("spotify:track:new");
+        PL_CHECK(!ValidatePlaylistPublishPreview(preview, stale, &error));
+        PL_CHECK(error.Find("changed") >= 0);
+    }
+
+    {
+        PlaylistDocument document;
+        for(const char *uri : { "spotify:track:a", "spotify:track:c" }) {
+            TrackEntry entry;
+            entry.spotify_uri = uri;
+            entry.state = TRACK_EXACT;
+            document.tracks.Add(pick(entry));
+        }
+        Vector<String> target = { "spotify:track:c" };
+        PlaylistPublishPreview preview = BuildPlaylistPublishPreview(document, target, ORDER_REFERENCE_FIRST);
+        String error;
+
+        PL_CHECK(preview.add_uris.GetCount() == 1);
+        preview.add_uris[0] = "playlistlab:unavailable:99";
+        PL_CHECK(!ValidatePlaylistPublishPreview(preview, target, &error));
+    }
+
+    {
+        PlaylistDocument document;
+        for(const char *uri : { "spotify:track:c", "spotify:track:a" }) {
+            TrackEntry entry;
+            entry.spotify_uri = uri;
+            entry.state = TRACK_EXACT;
+            document.tracks.Add(pick(entry));
+        }
+        Vector<String> target = { "spotify:track:a", "spotify:track:x", "spotify:track:c" };
+        PlaylistPublishPreview preview = BuildPlaylistPublishPreview(document, target, ORDER_REFERENCE_FIRST);
+        String error;
+
+        PL_CHECK(!preview.reorder_plan.moves.IsEmpty());
+        preview.reorder_plan.moves[0].before++;
+        PL_CHECK(!ValidatePlaylistPublishPreview(preview, target, &error));
+        PL_CHECK(!error.IsEmpty());
+    }
+
     Cout() << checks << " checks completed\n";
     if(failed)
         SetExitCode(1);

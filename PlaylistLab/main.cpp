@@ -54,6 +54,37 @@ String OrderModeText(PlaylistOrderMode mode)
     return mode == ORDER_REFERENCE_FIRST ? "Reference First" : "Reference Slots";
 }
 
+void CopyPlaylistPlan(PlaylistPlan& dst, const PlaylistPlan& src)
+{
+    dst.original_uris = clone(src.original_uris);
+    dst.desired_uris = clone(src.desired_uris);
+    dst.moves.Clear();
+    dst.moves.Reserve(src.moves.GetCount());
+    for(const PlaylistMove& move : src.moves) {
+        PlaylistMove& copy = dst.moves.Add();
+        copy.from = move.from;
+        copy.before = move.before;
+        copy.count = move.count;
+    }
+    dst.missing_reference_uris = clone(src.missing_reference_uris);
+    dst.matched_reference_count = src.matched_reference_count;
+}
+
+void CopyPublishPreview(PlaylistPublishPreview& dst, const PlaylistPublishPreview& src)
+{
+    dst.original_target_uris = clone(src.original_target_uris);
+    dst.reference_uris = clone(src.reference_uris);
+    dst.add_uris = clone(src.add_uris);
+    CopyPlaylistPlan(dst.reorder_plan, src.reorder_plan);
+    dst.mode = src.mode;
+    dst.reference_count = src.reference_count;
+    dst.publishable_count = src.publishable_count;
+    dst.review_count = src.review_count;
+    dst.missing_count = src.missing_count;
+    dst.unresolved_count = src.unresolved_count;
+    dst.invalid_uri_count = src.invalid_uri_count;
+}
+
 class UiChoiceDialog : public TopWindow {
 public:
     typedef UiChoiceDialog CLASSNAME;
@@ -119,7 +150,8 @@ public:
     PreviewDialog(const String& target,
                   const String& summary,
                   const String& detail,
-                  const Vector<UiModelItem>& rows)
+                  const Vector<UiModelItem>& rows,
+                  bool can_publish)
     {
         Title("PlaylistLab Publish Preview");
         Sizeable().Zoomable();
@@ -129,13 +161,17 @@ public:
         Add(summary_);
         Add(detail_);
         Add(list_);
+        Add(publish_);
         Add(close_);
 
         target_.SetText(target);
         summary_.SetText(summary);
         detail_.SetText(detail);
+        publish_.SetText("Publish to Spotify");
+        publish_.Enable(can_publish);
         close_.SetText("Close");
-        close_.WhenAction = [=] { AcceptBreak(IDOK); };
+        publish_.WhenAction = [=] { AcceptBreak(IDYES); };
+        close_.WhenAction = [=] { RejectBreak(IDCANCEL); };
 
         list_.SetModel(model_)
              .EnableRenameOnDblClick(false)
@@ -164,17 +200,25 @@ public:
         detail_.SetRect(margin, y, w, DPI(42)); y += DPI(48);
 
         int button_h = DPI(34);
-        int button_w = DPI(92);
+        int close_w = DPI(92);
+        int publish_w = DPI(144);
         int button_y = max(y, rc.GetHeight() - margin - button_h);
         list_.SetRect(margin, y, w, max(0, button_y - y - gap));
-        close_.SetRect(max(margin, rc.GetWidth() - margin - button_w), button_y, button_w, button_h);
+        close_.SetRect(max(margin, rc.GetWidth() - margin - close_w), button_y, close_w, button_h);
+        publish_.SetRect(max(margin, rc.GetWidth() - margin - close_w - gap - publish_w),
+                         button_y, publish_w, button_h);
+    }
+
+    int Choose()
+    {
+        return Execute();
     }
 
 private:
     UiListModel model_;
     UiList      list_;
     UiLabel     target_, summary_, detail_;
-    UiButton    close_;
+    UiButton    publish_, close_;
 };
 
 class PlaylistLabWindow : public TopWindow {
@@ -470,7 +514,7 @@ private:
         request.handled = true;
         if(target > request.from)
             target--;
-        last_notice_ = "Order changed locally. No Spotify write was made.";
+        last_notice_ = "Order changed locally. Preview again before publishing.";
         RefreshProjection(target);
     }
 
@@ -530,7 +574,7 @@ private:
         else
             preview_state_.SetText("Preview: load a target and reference list");
 
-        notice_.SetText(last_notice_.IsEmpty() ? "Import, resolve, order, then preview before publishing." : last_notice_);
+        notice_.SetText(last_notice_.IsEmpty() ? "Import, resolve, order, preview, then explicitly publish." : last_notice_);
         UpdateActionState();
     }
 
@@ -625,13 +669,6 @@ private:
         if(!notice.IsEmpty())
             last_notice_ = notice;
         UpdateSummary();
-    }
-
-    void SetPendingSpotifyResult(bool ok, const String& error)
-    {
-        GuiLock __;
-        pending_spotify_ok_ = ok;
-        pending_spotify_error_ = error;
     }
 
     void StartLoadPlaylists()
@@ -752,7 +789,7 @@ private:
         for(const SpotifyTrack& track : target_tracks_)
             target_uris_.Add(track.uri);
         target_loaded_ = true;
-        last_notice_ = Format("Loaded Spotify target '%s' with %d item%s. Preview only; no writes made.",
+        last_notice_ = Format("Loaded Spotify target '%s' with %d item%s. Inspect Preview before any write.",
                               target_playlist_name_, target_uris_.GetCount(),
                               target_uris_.GetCount() == 1 ? "" : "s");
         UpdateSummary();
@@ -835,7 +872,7 @@ private:
                      ? "Spotify candidates loaded. Confirm a candidate before it can be published."
                      : state == TRACK_MISSING
                        ? "Spotify did not return a usable candidate for this track."
-                       : "Spotify resolution updated the local document. No remote changes were made.";
+                       : "Spotify resolution updated the local document. Preview before publishing.";
         RefreshProjection(index);
 
         if(state == TRACK_REVIEW && !document_.tracks[index].candidates.IsEmpty())
@@ -922,6 +959,92 @@ private:
         return uri;
     }
 
+    void StartPublishPreview(PlaylistPublishPreview& preview)
+    {
+        if(!PrepareSpotifyWorker())
+            return;
+        if(target_playlist_id_.IsEmpty() || target_snapshot_id_.IsEmpty()) {
+            Exclamation("Reload the Spotify target before publishing; PlaylistLab requires a target snapshot.");
+            return;
+        }
+
+        pending_publish_preview_.Clear();
+        CopyPublishPreview(pending_publish_preview_.Create(), preview);
+        pending_publish_result_.Clear();
+
+        String playlist_id = target_playlist_id_;
+        String expected_snapshot = target_snapshot_id_;
+        PlaylistPublishPreview *job = ~pending_publish_preview_;
+        SetSpotifyBusy(true, Format("Publishing exact preview to '%s'...", target_playlist_name_));
+
+        if(!spotify_worker_.Run([=] {
+            SpotifyPublishResult result;
+            bool ok = spotify_client_.ExecutePublishPreview(playlist_id, *job, expected_snapshot, result);
+            String error = ok ? String() : spotify_client_.GetLastError();
+
+            {
+                GuiLock __;
+                pending_publish_result_.Clear();
+                pending_publish_result_.success = result.success;
+                pending_publish_result_.stale = result.stale;
+                pending_publish_result_.partial = result.partial;
+                pending_publish_result_.observed = result.observed;
+                pending_publish_result_.added_count = result.added_count;
+                pending_publish_result_.move_count = result.move_count;
+                pending_publish_result_.snapshot_id = result.snapshot_id;
+                pending_publish_result_.error = result.error;
+                pending_publish_result_.observed_tracks = pick(result.observed_tracks);
+                pending_publish_result_.observed_uris = pick(result.observed_uris);
+                pending_spotify_ok_ = ok;
+                pending_spotify_error_ = error;
+            }
+            PostCallback([=] { FinishPublishPreview(); });
+        })) {
+            pending_publish_preview_.Clear();
+            SetSpotifyBusy(false, "PlaylistLab could not start the Spotify publish worker thread.");
+        }
+    }
+
+    void FinishPublishPreview()
+    {
+        bool ok = pending_spotify_ok_;
+        String error = pending_spotify_error_;
+        SpotifyPublishResult& result = pending_publish_result_;
+        SetSpotifyBusy(false);
+
+        if(result.observed) {
+            target_tracks_ = pick(result.observed_tracks);
+            target_uris_ = pick(result.observed_uris);
+            target_snapshot_id_ = result.snapshot_id;
+            target_loaded_ = true;
+        }
+        else if(result.partial) {
+            target_loaded_ = false;
+            target_tracks_.Clear();
+            target_uris_.Clear();
+            target_snapshot_id_.Clear();
+        }
+        pending_publish_preview_.Clear();
+
+        if(ok && result.success) {
+            last_notice_ = Format("Spotify publish verified: %d added / %d move%s. No items were deleted.",
+                                  result.added_count, result.move_count, result.move_count == 1 ? "" : "s");
+            UpdateSummary();
+            return;
+        }
+
+        if(result.stale)
+            last_notice_ = "Publish cancelled because the Spotify target changed. The observed target was refreshed; inspect a new preview.";
+        else if(result.partial)
+            last_notice_ = Format("Spotify publish stopped after %d add / %d move%s. Inspect the refreshed target before retrying.",
+                                  result.added_count, result.move_count, result.move_count == 1 ? "" : "s");
+        else
+            last_notice_ = error.IsEmpty() ? "Spotify publish failed before a verified mutation completed." : error;
+
+        UpdateSummary();
+        Exclamation(last_notice_);
+    }
+
     void ShowPreview()
     {
         if(!target_loaded_) {
@@ -974,19 +1097,37 @@ private:
                                 p.reference_count, p.publishable_count, p.GetBlockingCount(),
                                 p.add_uris.GetCount(), p.reorder_plan.moves.GetCount());
         String detail;
+        bool snapshot_ready = !target_snapshot_id_.IsEmpty();
         if(!p.CanPublish())
             detail = Format("BLOCKED — review %d, missing %d, unresolved %d, invalid URI %d. Resolve every reference row before publishing.",
                             p.review_count, p.missing_count, p.unresolved_count, p.invalid_uri_count);
+        else if(!snapshot_ready)
+            detail = "BLOCKED — the target has no snapshot evidence. Reload the Spotify target before publishing.";
         else if(p.IsNoOp())
             detail = "READY — target already matches this preview. No Spotify mutation is required.";
         else
-            detail = "READY FOR REVIEW — this is a deterministic preview only. Spotify mutation is not enabled in this checkpoint.";
+            detail = "READY — Publish executes this exact preview after a fresh target/snapshot preflight, then verifies the final target.";
 
+        bool can_publish = p.CanPublish() && snapshot_ready && !p.IsNoOp();
         PreviewDialog dialog("Target: " + target_playlist_name_ + " | " + OrderModeText(order_mode_value_),
-                             summary, detail, rows);
-        dialog.Execute();
+                             summary, detail, rows, can_publish);
+        int action = dialog.Choose();
+        if(action == IDYES) {
+            String prompt = Format("Publish this exact preview to '%s'?\n\n%d addition%s and %d move%s will be sent. No items will be deleted.",
+                                   target_playlist_name_,
+                                   p.add_uris.GetCount(), p.add_uris.GetCount() == 1 ? "" : "s",
+                                   p.reorder_plan.moves.GetCount(), p.reorder_plan.moves.GetCount() == 1 ? "" : "s");
+            if(PromptYesNo(prompt)) {
+                StartPublishPreview(p);
+                return;
+            }
+            last_notice_ = "Publish cancelled. Spotify was not modified.";
+            UpdateSummary();
+            return;
+        }
+
         last_notice_ = p.CanPublish()
-                     ? "Preview inspected. No Spotify write was made."
+                     ? "Preview inspected. Spotify was not modified."
                      : "Preview is blocked until every reference row is publishable.";
         UpdateSummary();
     }
@@ -1013,6 +1154,8 @@ private:
 
     One<TrackEntry> pending_resolution_;
     int             pending_resolution_index_ = -1;
+    One<PlaylistPublishPreview> pending_publish_preview_;
+    SpotifyPublishResult        pending_publish_result_;
     PlaylistOrderMode order_mode_value_ = ORDER_REFERENCE_SLOTS;
 
     UiTitleCard header_;
