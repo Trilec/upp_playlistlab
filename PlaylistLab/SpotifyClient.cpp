@@ -579,33 +579,59 @@ bool SpotifyClient::ExecutePublishPreview(const String& playlist_id,
     };
 
     String working_snapshot = current_snapshot;
-    if(!AddItems(playlist_id, preview.add_uris, &working_snapshot, &result.added_count)) {
-        String saved_error = last_error;
-        int saved_status = last_status;
-        result.partial = result.added_count > 0;
-        if(result.partial)
+    if(!preview.add_uris.IsEmpty()) {
+        result.observed = false;
+        if(!AddItems(playlist_id, preview.add_uris, &working_snapshot, &result.added_count)) {
+            String saved_error = last_error;
+            int saved_status = last_status;
+            result.partial = true; // A failed mutation request can have an unknown remote outcome.
             recover_observed_state(saved_error, saved_status);
-        else
-            result.error = saved_error;
-        return false;
+            return false;
+        }
+
+        Vector<SpotifyTrack> after_add_tracks;
+        String after_add_snapshot;
+        if(!GetPlaylistItems(playlist_id, after_add_tracks, &after_add_snapshot)) {
+            String verify_error = last_error;
+            result.partial = true;
+            last_status = 0;
+            last_error = "Spotify additions were sent, but PlaylistLab could not verify the augmented target: " + verify_error;
+            result.error = last_error;
+            return false;
+        }
+
+        result.observed_tracks = pick(after_add_tracks);
+        result.observed_uris = TrackUris(result.observed_tracks);
+        result.snapshot_id = after_add_snapshot;
+        result.observed = true;
+        working_snapshot = after_add_snapshot;
+        if(result.observed_uris != preview.reorder_plan.original_uris) {
+            result.partial = true;
+            last_status = 0;
+            last_error = "Spotify target changed around the planned additions; reorder was not attempted. Inspect the refreshed target before retrying.";
+            result.error = last_error;
+            return false;
+        }
     }
 
-    if(!ReorderItems(playlist_id, preview.reorder_plan.moves, working_snapshot, &result.move_count)) {
-        String saved_error = last_error;
-        int saved_status = last_status;
-        result.partial = result.added_count > 0 || result.move_count > 0;
-        if(result.partial)
+    if(!preview.reorder_plan.moves.IsEmpty()) {
+        result.observed = false;
+        if(!ReorderItems(playlist_id, preview.reorder_plan.moves, working_snapshot, &result.move_count)) {
+            String saved_error = last_error;
+            int saved_status = last_status;
+            result.partial = true; // A failed reorder request can have an unknown remote outcome.
             recover_observed_state(saved_error, saved_status);
-        else
-            result.error = saved_error;
-        return false;
+            return false;
+        }
     }
 
     Vector<SpotifyTrack> final_tracks;
     String final_snapshot;
     if(!GetPlaylistItems(playlist_id, final_tracks, &final_snapshot)) {
         String verify_error = last_error;
-        result.partial = result.added_count > 0 || result.move_count > 0;
+        result.partial = result.added_count > 0 || result.move_count > 0 ||
+                         !preview.add_uris.IsEmpty() || !preview.reorder_plan.moves.IsEmpty();
+        result.observed = false;
         last_status = 0;
         last_error = "Spotify mutations were sent, but PlaylistLab could not verify the final target: " + verify_error;
         result.error = last_error;
