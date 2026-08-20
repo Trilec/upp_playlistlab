@@ -1,20 +1,22 @@
 uses
-    Core,
-    CtrlLib,
-    Ui;
+	Core,
+	Core/SSL,
+	CtrlLib,
+	Ui;
 
 file
-    PlaylistModel.h,
-    PlaylistModel.cpp,
-    PlaylistIO.h,
-    PlaylistIO.cpp,
-    PlaylistPlanner.h,
-    PlaylistPlanner.cpp,
-    SpotifyAuth.h,
-    SpotifyAuth.cpp,
-    SpotifyClient.h,
-    SpotifyClient.cpp,
-    main.cpp;
+	PlaylistModel.h,
+	PlaylistModel.cpp,
+	PlaylistIO.h,
+	PlaylistIO.cpp,
+	PlaylistPlanner.h,
+	PlaylistPlanner.cpp,
+	SpotifyAuth.h,
+	SpotifyAuth.cpp,
+	SpotifyClient.h,
+	SpotifyClient.cpp,
+	main.cpp;
 
 mainconfig
-    "" = "GUI MT";
+	"" = "GUI MT";
+
