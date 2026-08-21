@@ -128,6 +128,34 @@ Vector<String> PlaylistDocument::GetResolvedUris() const
     return out;
 }
 
+TrackEntry CloneTrackEntry(const TrackEntry& source)
+{
+    TrackEntry out;
+    out.requested_title = source.requested_title;
+    out.requested_artist = source.requested_artist;
+    out.requested_album = source.requested_album;
+    out.requested_isrc = source.requested_isrc;
+    out.spotify_uri = source.spotify_uri;
+    out.candidates = clone(source.candidates);
+    out.selected_candidate = source.selected_candidate;
+    out.state = source.state;
+    out.confidence = source.confidence;
+    out.note = source.note;
+    return out;
+}
+
+PlaylistDocument ClonePlaylistDocument(const PlaylistDocument& source)
+{
+    PlaylistDocument out;
+    out.name = source.name;
+    out.source_path = source.source_path;
+    out.dirty = source.dirty;
+    out.tracks.Reserve(source.tracks.GetCount());
+    for(const TrackEntry& entry : source.tracks)
+        out.tracks.Add(CloneTrackEntry(entry));
+    return out;
+}
+
 String TrackMatchStateText(TrackMatchState state)
 {
     switch(state) {
