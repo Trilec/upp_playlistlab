@@ -78,11 +78,14 @@ struct SpotifyPlaylistInfo : Moveable<SpotifyPlaylistInfo> {
     bool   collaborative = false;
     bool   is_public = false;
     bool   editable = false;
+    bool   items_accessible = false;
 };
 
-String TrackMatchStateText(TrackMatchState state);
-String NormalizeTrackText(const String& text);
-int    ScoreTrackCandidate(const TrackEntry& requested, const SpotifyTrack& candidate);
+TrackEntry       CloneTrackEntry(const TrackEntry& source);
+PlaylistDocument ClonePlaylistDocument(const PlaylistDocument& source);
+String            TrackMatchStateText(TrackMatchState state);
+String            NormalizeTrackText(const String& text);
+int               ScoreTrackCandidate(const TrackEntry& requested, const SpotifyTrack& candidate);
 
 } // namespace Upp
 
