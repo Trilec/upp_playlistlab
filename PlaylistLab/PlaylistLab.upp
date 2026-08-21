@@ -13,6 +13,8 @@ file
 	PlaylistIO.cpp,
 	PlaylistPlanner.h,
 	PlaylistPlanner.cpp,
+	PlaylistLocalState.h,
+	PlaylistLocalState.cpp,
 	SpotifyAuth.h,
 	SpotifyAuth.cpp,
 	SpotifyClient.h,
