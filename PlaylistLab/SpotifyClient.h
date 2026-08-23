@@ -34,6 +34,35 @@ struct SpotifyPublishResult {
     }
 };
 
+struct SpotifyReplaceResult {
+    bool success = false;
+    bool stale = false;
+    bool partial = false;
+    bool observed = false;
+    int  overwritten_count = 0;
+    int  written_count = 0;
+    int  appended_count = 0;
+    String snapshot_id;
+    String error;
+    Vector<SpotifyTrack> observed_tracks;
+    Vector<String>       observed_uris;
+
+    void Clear()
+    {
+        success = false;
+        stale = false;
+        partial = false;
+        observed = false;
+        overwritten_count = 0;
+        written_count = 0;
+        appended_count = 0;
+        snapshot_id.Clear();
+        error.Clear();
+        observed_tracks.Clear();
+        observed_uris.Clear();
+    }
+};
+
 class SpotifyClient {
 public:
     explicit SpotifyClient(SpotifyAuth& auth);
@@ -59,6 +88,14 @@ public:
                                const PlaylistPublishPreview& preview,
                                const String& expected_snapshot_id,
                                SpotifyPublishResult& result);
+
+    // Explicit destructive operation. This never runs as part of the guarded
+    // add/reorder publisher. The target must still match expected_snapshot_id;
+    // the exact desired sequence is read back before success is reported.
+    bool ExecuteReplaceItems(const String& playlist_id,
+                             const Vector<String>& desired_uris,
+                             const String& expected_snapshot_id,
+                             SpotifyReplaceResult& result);
 
 private:
     SpotifyAuth& auth;
