@@ -70,7 +70,7 @@ bool SpotifyClient::ExecuteReplaceItems(const String& playlist_id,
     }
 
     Vector<String> current_uris = ReplaceTrackUris(current_tracks);
-    result.observed_tracks = clone(current_tracks);
+    result.observed_tracks = pick(current_tracks);
     result.observed_uris = clone(current_uris);
     result.snapshot_id = current_snapshot;
     result.observed = true;
