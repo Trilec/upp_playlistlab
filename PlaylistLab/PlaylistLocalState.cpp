@@ -3,25 +3,25 @@
 namespace Upp {
 namespace {
 
-String VString(const ValueMap& map, const char *key)
+String LSString(const ValueMap& map, const char *key)
 {
     Value v = map[key];
     return IsNull(v) || v.IsVoid() ? String() : AsString(v);
 }
 
-int VInt(const ValueMap& map, const char *key, int fallback = 0)
+int LSInt(const ValueMap& map, const char *key, int fallback = 0)
 {
     Value v = map[key];
     return IsNull(v) || v.IsVoid() ? fallback : (int)v;
 }
 
-bool VBool(const ValueMap& map, const char *key, bool fallback = false)
+bool LSBool(const ValueMap& map, const char *key, bool fallback = false)
 {
     Value v = map[key];
     return IsNull(v) || v.IsVoid() ? fallback : (bool)v;
 }
 
-ValueArray VArray(const ValueMap& map, const char *key)
+ValueArray LSArray(const ValueMap& map, const char *key)
 {
     Value v = map[key];
     return IsValueArray(v) ? ValueArray(v) : ValueArray();
@@ -62,19 +62,19 @@ bool ReadTrack(const Value& value, SpotifyTrack& track)
     if(!IsValueMap(value))
         return false;
     ValueMap map = value;
-    track.id = VString(map, "id");
-    track.uri = VString(map, "uri");
-    track.title = VString(map, "title");
-    track.artist = VString(map, "artist");
-    track.album = VString(map, "album");
-    track.isrc = VString(map, "isrc");
-    track.image_url = VString(map, "image_url");
-    track.spotify_url = VString(map, "spotify_url");
-    track.type = VString(map, "type");
+    track.id = LSString(map, "id");
+    track.uri = LSString(map, "uri");
+    track.title = LSString(map, "title");
+    track.artist = LSString(map, "artist");
+    track.album = LSString(map, "album");
+    track.isrc = LSString(map, "isrc");
+    track.image_url = LSString(map, "image_url");
+    track.spotify_url = LSString(map, "spotify_url");
+    track.type = LSString(map, "type");
     if(track.type.IsEmpty())
         track.type = "track";
-    track.placeholder = VBool(map, "placeholder");
-    track.duration_ms = VInt(map, "duration_ms");
+    track.placeholder = LSBool(map, "placeholder");
+    track.duration_ms = LSInt(map, "duration_ms");
     return true;
 }
 
@@ -103,19 +103,19 @@ bool ReadEntry(const Value& value, TrackEntry& entry)
     if(!IsValueMap(value))
         return false;
     ValueMap map = value;
-    entry.requested_title = VString(map, "requested_title");
-    entry.requested_artist = VString(map, "requested_artist");
-    entry.requested_album = VString(map, "requested_album");
-    entry.requested_isrc = VString(map, "requested_isrc");
-    entry.spotify_uri = VString(map, "spotify_uri");
-    int state = VInt(map, "state", (int)TRACK_UNRESOLVED);
+    entry.requested_title = LSString(map, "requested_title");
+    entry.requested_artist = LSString(map, "requested_artist");
+    entry.requested_album = LSString(map, "requested_album");
+    entry.requested_isrc = LSString(map, "requested_isrc");
+    entry.spotify_uri = LSString(map, "spotify_uri");
+    int state = LSInt(map, "state", (int)TRACK_UNRESOLVED);
     entry.state = state >= (int)TRACK_UNRESOLVED && state <= (int)TRACK_MISSING
                 ? (TrackMatchState)state : TRACK_UNRESOLVED;
-    entry.confidence = minmax(VInt(map, "confidence"), 0, 100);
-    entry.note = VString(map, "note");
-    entry.selected_candidate = VInt(map, "selected_candidate", -1);
+    entry.confidence = minmax(LSInt(map, "confidence"), 0, 100);
+    entry.note = LSString(map, "note");
+    entry.selected_candidate = LSInt(map, "selected_candidate", -1);
 
-    ValueArray candidates = VArray(map, "candidates");
+    ValueArray candidates = LSArray(map, "candidates");
     for(int i = 0; i < candidates.GetCount(); i++) {
         SpotifyTrack track;
         if(ReadTrack(candidates[i], track))
@@ -161,16 +161,16 @@ bool PlaylistLocalState::LoadProfiles(Vector<SpotifyClientProfile>& profiles,
         return Fail(error, "Stored Spotify Client ID profiles have an invalid root object.");
 
     ValueMap root = parsed;
-    ValueArray items = VArray(root, "profiles");
+    ValueArray items = LSArray(root, "profiles");
     Index<String> seen;
     for(int i = 0; i < items.GetCount() && profiles.GetCount() < 32; i++) {
         if(!IsValueMap(items[i]))
             continue;
         ValueMap map = items[i];
-        String client_id = TrimBoth(VString(map, "client_id"));
+        String client_id = TrimBoth(LSString(map, "client_id"));
         if(client_id.IsEmpty() || seen.Find(client_id) >= 0)
             continue;
-        String name = TrimBoth(VString(map, "name"));
+        String name = TrimBoth(LSString(map, "name"));
         if(name.IsEmpty())
             name = Format("Spotify Client %d", profiles.GetCount() + 1);
         SpotifyClientProfile& profile = profiles.Add();
@@ -179,7 +179,7 @@ bool PlaylistLocalState::LoadProfiles(Vector<SpotifyClientProfile>& profiles,
         seen.Add(client_id);
     }
 
-    selected_profile = VInt(root, "selected_profile", profiles.IsEmpty() ? -1 : 0);
+    selected_profile = LSInt(root, "selected_profile", profiles.IsEmpty() ? -1 : 0);
     if(selected_profile < 0 || selected_profile >= profiles.GetCount())
         selected_profile = profiles.IsEmpty() ? -1 : 0;
     return true;
@@ -236,12 +236,12 @@ bool PlaylistLocalState::LoadWorking(PlaylistDocument& document,
         return Fail(error, "Stored Working Playlist state has an invalid root object.");
 
     ValueMap root = parsed;
-    document.name = VString(root, "name");
-    document.source_path = VString(root, "source_path");
-    document.dirty = VBool(root, "dirty");
-    source_label = VString(root, "source_label");
+    document.name = LSString(root, "name");
+    document.source_path = LSString(root, "source_path");
+    document.dirty = LSBool(root, "dirty");
+    source_label = LSString(root, "source_label");
 
-    ValueArray tracks = VArray(root, "tracks");
+    ValueArray tracks = LSArray(root, "tracks");
     document.tracks.Reserve(tracks.GetCount());
     for(int i = 0; i < tracks.GetCount(); i++) {
         TrackEntry entry;
