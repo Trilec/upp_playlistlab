@@ -1059,7 +1059,7 @@ private:
         if(!track || track->image_url.IsEmpty())
             return;
         String key = TrackArtworkKey(*track);
-        if(key.IsEmpty() || track_images_.Find(key) >= 0 || keys.Find(key) >= 0)
+        if(key.IsEmpty() || track_images_.Find(key) >= 0 || FindIndex(keys, key) >= 0)
             return;
         Image cached = SpotifyImageCache::Load("track-" + key);
         if(!IsNull(cached)) {
