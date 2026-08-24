@@ -19,6 +19,7 @@ file
 	SpotifyAuth.cpp,
 	SpotifyClient.h,
 	SpotifyClient.cpp,
+	SpotifyClientSearch.cpp,
 	SpotifyClientReplace.cpp,
 	SpotifyImageCache.h,
 	SpotifyImageCache.cpp,
