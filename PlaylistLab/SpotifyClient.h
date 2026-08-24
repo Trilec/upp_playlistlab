@@ -74,6 +74,7 @@ public:
     bool GetPlaylists(Vector<SpotifyPlaylistInfo>& playlists);
     bool GetEditablePlaylists(Vector<SpotifyPlaylistInfo>& playlists);
     bool GetPlaylistItems(const String& playlist_id, Vector<SpotifyTrack>& tracks, String *snapshot_id = nullptr);
+    bool SearchTracks(const String& query, Vector<SpotifyTrack>& tracks, int limit = 10);
     bool SearchTracks(const TrackEntry& request, Vector<SpotifyTrack>& tracks, int limit = 10);
     bool ResolveTrack(TrackEntry& entry);
     bool ResolveDocument(PlaylistDocument& document, Gate<int, int> progress = Gate<int, int>());
