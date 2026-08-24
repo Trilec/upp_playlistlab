@@ -23,6 +23,7 @@ file
 	SpotifyClientReplace.cpp,
 	SpotifyImageCache.h,
 	SpotifyImageCache.cpp,
+	PlaylistTransferList.h,
 	main.cpp;
 
 mainconfig
