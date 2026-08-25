@@ -30,8 +30,19 @@ public:
 
     virtual void LeftDown(Point p, dword flags) override
     {
+        Vector<int> prior_selection = GetSelection();
+        Value prior_data = GetData();
         UiList::LeftDown(p, flags);
+
         transfer_pressed_ = transfer_source_ && !IsDragReorderEnabled() && GetCursor() >= 0;
+        if(transfer_pressed_ && (flags & (K_SHIFT | K_CTRL)) == 0
+           && prior_selection.GetCount() > 1
+           && FindIndex(prior_selection, GetCursor()) >= 0) {
+            // UiList intentionally makes an unmodified body click single-select.
+            // For a drag beginning on an already-selected row, restore the prior
+            // token selection so the visible group and transfer payload agree.
+            SetData(prior_data);
+        }
         if(transfer_pressed_ && !HasCapture())
             SetCapture();
     }
