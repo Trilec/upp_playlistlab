@@ -38,7 +38,9 @@ public:
 
     virtual void LeftUp(Point p, dword flags) override
     {
-        if(HasCapture())
+        // Only release capture created by the transfer-source path. Working's
+        // internal UiList reorder owns its own capture and must receive LeftUp.
+        if(transfer_pressed_ && HasCapture())
             ReleaseCapture();
         transfer_pressed_ = false;
         UiList::LeftUp(p, flags);
