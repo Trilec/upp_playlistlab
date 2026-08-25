@@ -1,6 +1,16 @@
 #include "SpotifyImageCache.h"
 
 namespace Upp {
+namespace {
+
+Image FailedArtworkMarker()
+{
+    ImageBuffer marker(1, 1);
+    marker[0][0] = RGBAZero();
+    return marker;
+}
+
+} // namespace
 
 String SpotifyImageCache::SafeKey(const String& key)
 {
@@ -54,20 +64,20 @@ Image SpotifyImageCache::LoadOrFetch(const String& key, const String& url, Strin
     if(request.IsSocketError()) {
         if(error)
             *error = "Artwork download failed: " + request.GetErrorDesc();
-        return Image();
+        return FailedArtworkMarker();
     }
     int status = request.GetStatusCode();
     if(status < 200 || status >= 300) {
         if(error)
             *error = Format("Artwork download returned HTTP %d.", status);
-        return Image();
+        return FailedArtworkMarker();
     }
 
     Image image = StreamRaster::LoadStringAny(data);
     if(IsNull(image)) {
         if(error)
             *error = "Artwork download was not a supported image.";
-        return Image();
+        return FailedArtworkMarker();
     }
 
     String path = CachePath(key);
