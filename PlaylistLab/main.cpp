@@ -796,6 +796,7 @@ private:
 
         import_csv_.WhenAction = [=] { ImportCsv(); };
         paste_text_.WhenAction = [=] { ImportClipboardText(); };
+        imported_find_.WhenAction = [=] { StartFindImported(); };
         imported_find_button_.WhenAction = [=] { StartFindImported(); };
         resolve_imported_.WhenAction = [=] { StartResolveImported(); };
         review_imported_.WhenAction = [=] { ReviewImportedCandidate(); };
@@ -1059,7 +1060,8 @@ private:
         if(!track || track->image_url.IsEmpty())
             return;
         String key = TrackArtworkKey(*track);
-        if(key.IsEmpty() || track_images_.Find(key) >= 0 || FindIndex(keys, key) >= 0)
+        if(key.IsEmpty() || track_images_.Find(key) >= 0 ||
+           track_artwork_attempted_.Find(key) >= 0 || FindIndex(keys, key) >= 0)
             return;
         Image cached = SpotifyImageCache::Load("track-" + key);
         if(!IsNull(cached)) {
@@ -1068,6 +1070,7 @@ private:
         }
         if(keys.GetCount() >= 24)
             return;
+        track_artwork_attempted_.FindAdd(key);
         keys.Add(key);
         urls.Add(track->image_url);
     }
@@ -1139,7 +1142,7 @@ private:
 
     void StartFindImported()
     {
-        String query = TrimBoth(AsString(imported_find_.GetData()));
+        String query = TrimBoth(imported_find_.GetTextUtf8());
         if(query.IsEmpty()) {
             last_notice_ = "Type a song title, artist, or both before using Find.";
             UpdateSummary();
@@ -1711,7 +1714,8 @@ private:
         working_remove_.Enable(idle && working_list_.GetSelectionCount() > 0);
         working_clear_.Enable(idle && !working_document_.tracks.IsEmpty());
         working_export_.Enable(idle && !working_document_.tracks.IsEmpty());
-        working_list_.Enable(idle && !working_document_.tracks.IsEmpty());
+        // Empty Working is still an active drop target for Spotify/Imported rows.
+        working_list_.Enable(idle);
         working_destination_.Enable(idle && has_profile && !working_document_.tracks.IsEmpty());
         if(working_destination_.GetCount() >= 2) {
             bool editable_target = idle && target_loaded_ && target_editable_ && !target_snapshot_id_.IsEmpty();
@@ -2223,6 +2227,7 @@ private:
         if(!PrepareSpotifyWorker())
             return;
 
+        pending_create_uris_ = clone(uris);
         pending_created_playlist_ = SpotifyPlaylistInfo();
         pending_create_added_ = 0;
         SetSpotifyBusy(true, "Creating Spotify playlist '" + name + "'...");
@@ -2237,7 +2242,7 @@ private:
             }
             if(ok) {
                 String snapshot = created.snapshot_id;
-                if(!spotify_client_.AddItems(created.id, uris, &snapshot, &added)) {
+                if(!spotify_client_.AddItems(created.id, pending_create_uris_, &snapshot, &added)) {
                     worker_error = spotify_client_.GetLastError();
                     ok = false;
                 }
@@ -2251,8 +2256,10 @@ private:
                 pending_spotify_error_ = worker_error;
             }
             PostCallback([=] { FinishCreateWorkingPlaylist(); });
-        }))
+        })) {
+            pending_create_uris_.Clear();
             SetSpotifyBusy(false, "PlaylistLab could not start the create-playlist worker.");
+        }
     }
 
     void FinishCreateWorkingPlaylist()
@@ -2261,6 +2268,7 @@ private:
         String error = pending_spotify_error_;
         bool created = !pending_created_playlist_.id.IsEmpty();
         SetSpotifyBusy(false);
+        pending_create_uris_.Clear();
         if(created) {
             last_playlist_id_ = pending_created_playlist_.id;
             SaveUiState();
@@ -2479,11 +2487,15 @@ private:
             target_uris_ = pick(result.observed_uris);
             target_snapshot_id_ = result.snapshot_id;
             target_loaded_ = true;
+            target_items_accessible_ = true;
             int q = FindPlaylist(target_playlist_id_);
-            if(q >= 0)
+            if(q >= 0) {
+                spotify_playlists_[q].items_accessible = true;
                 spotify_playlists_[q].item_count = target_tracks_.GetCount();
+            }
             RefreshTargetProjection();
             RefreshPlaylistProjection(q);
+            StartTrackArtworkCache();
         }
         else if(result.partial) {
             target_loaded_ = false;
@@ -2616,6 +2628,7 @@ private:
     Vector<String> track_artwork_job_urls_;
     Vector<Image> track_artwork_result_images_;
     VectorMap<String, Image> track_images_;
+    Index<String> track_artwork_attempted_;
 
     Vector<SpotifyPlaylistInfo> spotify_playlists_;
     Vector<Image> playlist_images_;
@@ -2641,6 +2654,7 @@ private:
     SpotifyPublishResult pending_publish_result_;
     SpotifyReplaceResult pending_replace_result_;
     Vector<String> pending_replace_uris_;
+    Vector<String> pending_create_uris_;
     SpotifyPlaylistInfo pending_created_playlist_;
     int pending_create_added_ = 0;
 
