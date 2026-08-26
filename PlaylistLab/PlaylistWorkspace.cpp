@@ -619,6 +619,11 @@ private:
             StartLoadPlaylists(false);
     }
 
+    Color SeparatorColor() const
+    {
+        return APP_MODE == UiThemeMode::Dark ? Color(72, 72, 72) : Color(205, 210, 218);
+    }
+
     void ConfigureSeparator(UiBoxLayout::ItemRef item)
     {
         item.Fixed(DPI(10))
@@ -627,7 +632,13 @@ private:
             .LineAlign(UiCrossAlign::Center)
             .LineThickness(DPI(1))
             .LineColorEnabled(true)
-            .LineColor(APP_MODE == UiThemeMode::Dark ? Color(72, 72, 72) : Color(205, 210, 218));
+            .LineColor(SeparatorColor());
+    }
+
+    void RefreshSeparatorColors()
+    {
+        spotify_separator_.LineColor(SeparatorColor());
+        working_separator_.LineColor(SeparatorColor());
     }
 
     void UpdateHeaderActionIcons()
@@ -648,6 +659,7 @@ private:
         UiTheme::Set(theme);
         UpdateHeaderActionIcons();
         ApplyTheme();
+        RefreshSeparatorColors();
         Refresh();
     }
 
@@ -689,7 +701,8 @@ private:
         spotify_header_row_.SetDirection(UiDirection::H).SetGap(DPI(6)).SetAlignItems(UiCrossAlign::Stretch);
         spotify_header_row_.Add(spotify_heading_).Fit();
         spotify_header_row_.AddSpacer(1);
-        ConfigureSeparator(spotify_header_row_.AddSpacer());
+        spotify_separator_ = spotify_header_row_.AddSpacer();
+        ConfigureSeparator(spotify_separator_);
         spotify_header_row_.Add(spotify_to_working_label_).Fit();
         spotify_header_row_.Add(spotify_transfer_).Fit().MinWidth(DPI(124));
         spotify_header_row_.Add(open_spotify_).Fit();
@@ -713,7 +726,8 @@ private:
         working_header_row_.Add(working_heading_).Fit();
         working_header_row_.Add(working_name_).Expand(1).MinMaxWidth(DPI(150), DPI(340));
         working_header_row_.AddSpacer(1);
-        ConfigureSeparator(working_header_row_.AddSpacer());
+        working_separator_ = working_header_row_.AddSpacer();
+        ConfigureSeparator(working_separator_);
         working_header_row_.Add(destination_label_).Fit();
         working_header_row_.Add(destination_).Fit().MinWidth(DPI(132));
 
@@ -2506,6 +2520,7 @@ private:
     UiBoxLayout spotify_header_row_{UiDirection::H};
     UiBoxLayout working_header_row_{UiDirection::H};
     UiBoxLayout working_action_row_{UiDirection::H};
+    UiBoxLayout::ItemRef spotify_separator_, working_separator_;
 
     UiLabel library_heading_, library_hint_;
     UiDropdown profile_selector_;
