@@ -1173,7 +1173,13 @@ private:
             row.text = playlist.name.IsEmpty() ? String("Untitled Spotify playlist") : playlist.name;
             String owner = playlist.owner_name.IsEmpty() ? playlist.owner_id : playlist.owner_name;
             row.description = owner.IsEmpty() ? String("Spotify playlist") : "by " + owner;
-            String access = playlist.items_accessible ? (playlist.editable ? "EDIT" : "SOURCE") : "META";
+            String access;
+            if(playlist.editable)
+                access = "EDIT";
+            else if(!playlist.items_access_checked)
+                access = "CHECK";
+            else
+                access = playlist.items_accessible ? "SOURCE" : "META";
             row.right_text = Format("%d  %s", playlist.item_count, access);
             row.data = i;
             if(i < playlist_images_.GetCount()) row.image = playlist_images_[i];
@@ -1429,8 +1435,6 @@ private:
             Exclamation(last_notice_);
             return;
         }
-        for(SpotifyPlaylistInfo& playlist : spotify_playlists_)
-            playlist.items_accessible = true;
         playlist_images_.SetCount(spotify_playlists_.GetCount());
         for(int i = 0; i < spotify_playlists_.GetCount(); ++i)
             playlist_images_[i] = SpotifyImageCache::Load("playlist-" + spotify_playlists_[i].id);
@@ -1445,7 +1449,8 @@ private:
             UpdateSummary();
             return;
         }
-        last_notice_ = Format("Loaded %d Spotify playlist%s.", spotify_playlists_.GetCount(), spotify_playlists_.GetCount() == 1 ? "" : "s");
+        last_notice_ = Format("Loaded %d Spotify playlist%s. Item access is verified when a playlist is selected.",
+                              spotify_playlists_.GetCount(), spotify_playlists_.GetCount() == 1 ? "" : "s");
         UpdateSummary();
         if(selected >= 0) StartLoadTarget(selected);
     }
@@ -1534,12 +1539,12 @@ private:
         target_playlist_name_ = playlist.name;
         target_spotify_url_ = playlist.spotify_url;
         target_editable_ = playlist.editable;
-        target_items_accessible_ = playlist.items_accessible;
+        target_items_accessible_ = !playlist.items_access_checked || playlist.items_accessible;
         target_snapshot_id_.Clear(); target_loaded_ = false; target_tracks_.Clear(); target_uris_.Clear();
         last_playlist_id_ = target_playlist_id_;
         SaveUiState();
         RefreshTargetProjection();
-        if(!target_items_accessible_) {
+        if(playlist.items_access_checked && !playlist.items_accessible) {
             last_notice_ = "Spotify previously refused item access for this playlist. Refresh playlists to retry its access state.";
             UpdateSummary();
             return;
@@ -1577,16 +1582,21 @@ private:
             target_loaded_ = false;
             if(status == 403 || status == 404) {
                 target_items_accessible_ = false;
-                if(q >= 0) spotify_playlists_[q].items_accessible = false;
+                if(q >= 0) {
+                    spotify_playlists_[q].items_access_checked = true;
+                    spotify_playlists_[q].items_accessible = false;
+                }
                 last_notice_ = "Spotify exposes this playlist's metadata but refused its item list for the current account/app.";
             }
-            else last_notice_ = error.IsEmpty() ? "Spotify playlist loading failed." : error;
+            else
+                last_notice_ = error.IsEmpty() ? "Spotify playlist loading failed." : error;
             RefreshTargetProjection(); RefreshPlaylistProjection(q); Exclamation(last_notice_); return;
         }
         target_uris_.Clear(); target_uris_.Reserve(target_tracks_.GetCount());
         for(const SpotifyTrack& track : target_tracks_) target_uris_.Add(track.uri);
         target_items_accessible_ = true; target_loaded_ = true;
         if(q >= 0) {
+            spotify_playlists_[q].items_access_checked = true;
             spotify_playlists_[q].items_accessible = true;
             spotify_playlists_[q].item_count = target_tracks_.GetCount();
         }
@@ -2112,6 +2122,7 @@ private:
         target_loaded_ = true; target_items_accessible_ = true;
         int q = FindPlaylist(target_playlist_id_);
         if(q >= 0) {
+            spotify_playlists_[q].items_access_checked = true;
             spotify_playlists_[q].items_accessible = true;
             spotify_playlists_[q].item_count = target_tracks_.GetCount();
         }
