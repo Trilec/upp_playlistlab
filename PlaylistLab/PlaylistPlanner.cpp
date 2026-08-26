@@ -109,6 +109,35 @@ Vector<String> ApplyMoveSequence(Vector<String> current, const Vector<PlaylistMo
     return current;
 }
 
+Vector<String> BuildAppendMissingUris(const Vector<String>& working_uris,
+                                      const Vector<String>& target_uris)
+{
+    VectorMap<String, int> available;
+    for(const String& uri : target_uris) {
+        int q = available.Find(uri);
+        if(q < 0)
+            available.Add(uri, 1);
+        else
+            available[q]++;
+    }
+
+    VectorMap<String, int> consumed;
+    Vector<String> missing;
+    for(const String& uri : working_uris) {
+        int used_q = consumed.Find(uri);
+        int used = used_q < 0 ? 0 : consumed[used_q];
+        int have_q = available.Find(uri);
+        int have = have_q < 0 ? 0 : available[have_q];
+        if(used >= have)
+            missing.Add(uri);
+        if(used_q < 0)
+            consumed.Add(uri, 1);
+        else
+            consumed[used_q]++;
+    }
+    return missing;
+}
+
 PlaylistPlan BuildPlaylistPlan(const Vector<String>& reference_uris,
                                const Vector<String>& target_uris,
                                PlaylistOrderMode mode)
