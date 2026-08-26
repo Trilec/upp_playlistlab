@@ -34,6 +34,33 @@ struct SpotifyPublishResult {
     }
 };
 
+struct SpotifyAppendResult {
+    bool success = false;
+    bool stale = false;
+    bool partial = false;
+    bool observed = false;
+    int  added_count = 0;
+    String snapshot_id;
+    String error;
+    Vector<String> planned_add_uris;
+    Vector<SpotifyTrack> observed_tracks;
+    Vector<String>       observed_uris;
+
+    void Clear()
+    {
+        success = false;
+        stale = false;
+        partial = false;
+        observed = false;
+        added_count = 0;
+        snapshot_id.Clear();
+        error.Clear();
+        planned_add_uris.Clear();
+        observed_tracks.Clear();
+        observed_uris.Clear();
+    }
+};
+
 struct SpotifyReplaceResult {
     bool success = false;
     bool stale = false;
@@ -90,6 +117,14 @@ public:
                                const PlaylistPublishPreview& preview,
                                const String& expected_snapshot_id,
                                SpotifyPublishResult& result);
+
+    // Explicit append-only operation for the simplified authoring workflow.
+    // Missing occurrences are computed from a fresh stable target read, appended
+    // in Working order, and the exact augmented target is read back before success.
+    bool ExecuteAppendMissing(const String& playlist_id,
+                              const Vector<String>& working_uris,
+                              const String& expected_snapshot_id,
+                              SpotifyAppendResult& result);
 
     // Explicit destructive operation. This never runs as part of the guarded
     // add/reorder publisher. The target must still match expected_snapshot_id;
