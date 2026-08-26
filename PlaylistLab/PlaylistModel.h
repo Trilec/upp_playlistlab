@@ -79,6 +79,7 @@ struct SpotifyPlaylistInfo : Moveable<SpotifyPlaylistInfo> {
     bool   collaborative = false;
     bool   is_public = false;
     bool   editable = false;
+    bool   items_access_checked = false;
     bool   items_accessible = false;
 };
 
