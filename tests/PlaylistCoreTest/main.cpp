@@ -333,6 +333,37 @@ CONSOLE_APP_MAIN
         PL_CHECK(!error.IsEmpty());
     }
 
+    {
+        Vector<String> working = {
+            "spotify:track:a", "spotify:track:a", "spotify:track:b",
+            "spotify:track:c", "spotify:track:a"
+        };
+        Vector<String> target = {
+            "spotify:track:a", "spotify:track:c", "spotify:track:a", "spotify:track:z"
+        };
+        Vector<String> expected = { "spotify:track:b", "spotify:track:a" };
+        PL_CHECK(BuildAppendMissingUris(working, target) == expected);
+        PL_CHECK(BuildAppendMissingUris(target, target).IsEmpty());
+        Vector<String> empty;
+        PL_CHECK(BuildAppendMissingUris(working, empty) == working);
+    }
+
+    {
+        TrackEntry entry;
+        entry.requested_title = "Annotated";
+        entry.spotify_uri = "spotify:track:annotated";
+        entry.state = TRACK_EXACT;
+        entry.note = "resolver evidence";
+        entry.user_note = "Curt's local note";
+
+        TrackEntry copy = CloneTrackEntry(entry);
+        PL_CHECK(copy.user_note == "Curt's local note");
+        PL_CHECK(copy.note == "resolver evidence");
+        copy.ClearResolution();
+        PL_CHECK(copy.user_note == "Curt's local note");
+        PL_CHECK(copy.note.IsEmpty());
+    }
+
     Cout() << checks << " checks completed\n";
     if(failed)
         SetExitCode(1);
