@@ -17,34 +17,6 @@ Vector<String> AppendTrackUris(const Vector<SpotifyTrack>& tracks)
     return uris;
 }
 
-Vector<String> MissingOccurrences(const Vector<String>& working, const Vector<String>& target)
-{
-    VectorMap<String, int> available;
-    for(const String& uri : target) {
-        int q = available.Find(uri);
-        if(q < 0)
-            available.Add(uri, 1);
-        else
-            available[q]++;
-    }
-
-    VectorMap<String, int> consumed;
-    Vector<String> missing;
-    for(const String& uri : working) {
-        int used_q = consumed.Find(uri);
-        int used = used_q < 0 ? 0 : consumed[used_q];
-        int have_q = available.Find(uri);
-        int have = have_q < 0 ? 0 : available[have_q];
-        if(used >= have)
-            missing.Add(uri);
-        if(used_q < 0)
-            consumed.Add(uri, 1);
-        else
-            consumed[used_q]++;
-    }
-    return missing;
-}
-
 } // namespace
 
 bool SpotifyClient::ExecuteAppendMissing(const String& playlist_id,
@@ -95,7 +67,7 @@ bool SpotifyClient::ExecuteAppendMissing(const String& playlist_id,
         return false;
     }
 
-    result.planned_add_uris = MissingOccurrences(working_uris, current_uris);
+    result.planned_add_uris = BuildAppendMissingUris(working_uris, current_uris);
     if(result.planned_add_uris.IsEmpty()) {
         result.success = true;
         return true;
