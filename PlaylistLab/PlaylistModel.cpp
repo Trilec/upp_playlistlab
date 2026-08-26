@@ -66,6 +66,7 @@ void TrackEntry::ClearResolution()
     confidence = 0;
     state = TRACK_UNRESOLVED;
     note.Clear();
+    // user_note is authored metadata and intentionally survives rematching.
 }
 
 void PlaylistDocument::Clear()
@@ -141,6 +142,7 @@ TrackEntry CloneTrackEntry(const TrackEntry& source)
     out.state = source.state;
     out.confidence = source.confidence;
     out.note = source.note;
+    out.user_note = source.user_note;
     return out;
 }
 
