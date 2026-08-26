@@ -81,6 +81,7 @@ public:
 
     bool CreatePlaylist(const String& name, bool is_public, const String& description,
                         SpotifyPlaylistInfo& playlist);
+    bool UpdatePlaylistDetails(const String& playlist_id, const String& name);
     bool AddItems(const String& playlist_id, const Vector<String>& uris,
                   String *snapshot_id = nullptr, int *added_count = nullptr);
     bool ReorderItems(const String& playlist_id, const Vector<PlaylistMove>& moves,
