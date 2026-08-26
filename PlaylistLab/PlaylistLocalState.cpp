@@ -93,6 +93,7 @@ Json EntryJson(const TrackEntry& entry)
         ("state", (int)entry.state)
         ("confidence", entry.confidence)
         ("note", entry.note)
+        ("user_note", entry.user_note)
         ("selected_candidate", entry.selected_candidate)
         ("candidates", candidates);
     return json;
@@ -113,6 +114,7 @@ bool ReadEntry(const Value& value, TrackEntry& entry)
                 ? (TrackMatchState)state : TRACK_UNRESOLVED;
     entry.confidence = minmax(LSInt(map, "confidence"), 0, 100);
     entry.note = LSString(map, "note");
+    entry.user_note = LSString(map, "user_note");
     entry.selected_candidate = LSInt(map, "selected_candidate", -1);
 
     ValueArray candidates = LSArray(map, "candidates");
@@ -261,7 +263,7 @@ bool PlaylistLocalState::SaveWorking(const PlaylistDocument& document,
         tracks << EntryJson(entry);
 
     Json root;
-    root("version", 1)
+    root("version", 2)
         ("name", document.name)
         ("source_path", document.source_path)
         ("dirty", document.dirty)
