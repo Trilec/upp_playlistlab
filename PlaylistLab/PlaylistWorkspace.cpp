@@ -609,6 +609,17 @@ private:
             StartLoadPlaylists(false);
     }
 
+    void ConfigureSeparator(UiBoxLayout::ItemRef item)
+    {
+        item.Fixed(DPI(10))
+            .LineEnabled(true)
+            .LineOrientation(UiSpacerLineOrientation::Vertical)
+            .LineAlign(UiCrossAlign::Center)
+            .LineThickness(DPI(1))
+            .LineColorEnabled(true)
+            .LineColor(Color(72, 72, 72));
+    }
+
     void BuildUi()
     {
         Add(header_); Add(library_panel_); Add(spotify_panel_); Add(working_panel_); Add(inspector_panel_);
@@ -618,20 +629,30 @@ private:
                .SetContentInset(DPI(8));
 
         library_panel_.Add(library_heading_); library_panel_.Add(library_hint_);
-        library_panel_.Add(profile_selector_); library_panel_.Add(profile_add_);
-        library_panel_.Add(profile_edit_); library_panel_.Add(profile_refresh_); library_panel_.Add(playlist_list_);
+        library_panel_.Add(library_profile_row_); library_panel_.Add(playlist_list_);
         library_heading_.SetText("SPOTIFY PLAYLISTS");
         library_hint_.SetText("Choose a Spotify playlist. Readable tracks can be copied or dragged into Working.");
-        profile_add_.SetIcon(ICON_CONTENT_OUTLINED_ADD_48()).SetIconSize(DPI(17), DPI(17));
-        profile_edit_.SetIcon(ICON_DESIGN_EDIT_TEXT_48()).SetIconSize(DPI(17), DPI(17));
-        profile_refresh_.SetIcon(CtrlImg::redo()).SetIconSize(DPI(17), DPI(17));
+        library_profile_row_.SetDirection(UiDirection::H).SetGap(DPI(5)).SetAlignItems(UiCrossAlign::Stretch);
+        library_profile_row_.Add(profile_selector_).Expand(1).MinWidth(DPI(120));
+        library_profile_row_.Add(profile_add_).Fixed(DPI(32));
+        library_profile_row_.Add(profile_edit_).Fixed(DPI(32));
+        library_profile_row_.Add(profile_refresh_).Fixed(DPI(32));
+        profile_add_.SetIcon(ICON_CONTENT_OUTLINED_ADD_48()).SetIconSize(DPI(18), DPI(18));
+        profile_edit_.SetIcon(ICON_DESIGN_EDIT_TEXT_48()).SetIconSize(DPI(18), DPI(18));
+        profile_refresh_.SetIcon(CtrlImg::redo()).SetIconSize(DPI(18), DPI(18));
         profile_add_.Tip("Add a Spotify Client ID profile.");
         profile_edit_.Tip("Edit the selected profile name and Client ID. Delete is available inside the editor.");
         profile_refresh_.Tip("Authorize if needed and refresh Spotify playlists for this Client ID.");
 
-        spotify_panel_.Add(spotify_heading_); spotify_panel_.Add(spotify_meta_);
-        spotify_panel_.Add(spotify_to_working_label_); spotify_panel_.Add(spotify_transfer_);
-        spotify_panel_.Add(open_spotify_); spotify_panel_.Add(rename_spotify_); spotify_panel_.Add(target_track_list_);
+        spotify_panel_.Add(spotify_header_row_); spotify_panel_.Add(spotify_meta_); spotify_panel_.Add(target_track_list_);
+        spotify_header_row_.SetDirection(UiDirection::H).SetGap(DPI(6)).SetAlignItems(UiCrossAlign::Stretch);
+        spotify_header_row_.Add(spotify_heading_).Fit();
+        spotify_header_row_.AddSpacer(1);
+        ConfigureSeparator(spotify_header_row_.AddSpacer());
+        spotify_header_row_.Add(spotify_to_working_label_).Fit();
+        spotify_header_row_.Add(spotify_transfer_).Fit().MinWidth(DPI(124));
+        spotify_header_row_.Add(open_spotify_).Fit();
+        spotify_header_row_.Add(rename_spotify_).Fixed(DPI(32));
         spotify_heading_.SetText("SELECTED SPOTIFY PLAYLIST");
         spotify_meta_.SetText("Choose a playlist from the library.");
         spotify_to_working_label_.SetText("Working Playlist");
@@ -640,15 +661,30 @@ private:
         spotify_transfer_.SetPopupMinWidth(DPI(150));
         SetTransferAction(transfer_action_, false);
         open_spotify_.SetText("Open Spotify");
-        rename_spotify_.SetIcon(ICON_DESIGN_EDIT_TEXT_48()).SetIconSize(DPI(16), DPI(16));
+        open_spotify_.Tip("Open the selected Spotify playlist in Spotify.");
+        rename_spotify_.SetIcon(ICON_DESIGN_EDIT_TEXT_48()).SetIconSize(DPI(18), DPI(18));
         rename_spotify_.Tip("Rename the selected editable Spotify playlist.");
         spotify_transfer_.Tip("Copy tracks from the selected Spotify playlist into Working. The chosen dropdown action becomes the default button action.");
 
-        working_panel_.Add(working_heading_); working_panel_.Add(working_name_);
-        working_panel_.Add(destination_label_); working_panel_.Add(destination_);
-        working_panel_.Add(find_); working_panel_.Add(import_csv_); working_panel_.Add(paste_text_);
-        working_panel_.Add(resolve_unmatched_); working_panel_.Add(export_csv_);
-        working_panel_.Add(remove_working_); working_panel_.Add(clear_working_); working_panel_.Add(working_list_);
+        working_panel_.Add(working_header_row_); working_panel_.Add(working_action_row_); working_panel_.Add(working_list_);
+        working_header_row_.SetDirection(UiDirection::H).SetGap(DPI(6)).SetAlignItems(UiCrossAlign::Stretch);
+        working_header_row_.Add(working_heading_).Fit();
+        working_header_row_.Add(working_name_).Expand(1).MinMaxWidth(DPI(150), DPI(340));
+        working_header_row_.AddSpacer(1);
+        ConfigureSeparator(working_header_row_.AddSpacer());
+        working_header_row_.Add(destination_label_).Fit();
+        working_header_row_.Add(destination_).Fit().MinWidth(DPI(132));
+
+        working_action_row_.SetDirection(UiDirection::H).SetGap(DPI(6)).SetAlignItems(UiCrossAlign::Stretch);
+        working_action_row_.Add(find_).Expand(1).MinMaxWidth(DPI(150), DPI(280));
+        working_action_row_.AddSpacer(1);
+        working_action_row_.Add(import_csv_).Fit();
+        working_action_row_.Add(paste_text_).Fit();
+        working_action_row_.Add(resolve_unmatched_).Fit();
+        working_action_row_.Add(export_csv_).Fit();
+        working_action_row_.Add(remove_working_).Fixed(DPI(32));
+        working_action_row_.Add(clear_working_).Fixed(DPI(32));
+
         working_heading_.SetText("WORKING PLAYLIST");
         working_name_.SetPlaceholder("Working Playlist name");
         destination_label_.SetText("Playlist");
@@ -659,6 +695,7 @@ private:
         destination_.SetItemDescription(0, "Create a new private Spotify playlist from the exact Working order.");
         destination_.SetItemDescription(1, "Append only missing Working occurrences to the selected editable playlist. No reorder or delete.");
         destination_.SetItemDescription(2, "Destructive: replace the selected editable playlist with the exact Working order.");
+        destination_.Tip("Choose what PlaylistLab should do with the Working Playlist. Every Spotify write shows a preview first.");
         SetDestinationAction(destination_action_, false);
         find_.SetPlaceholder("Find a song or artist…  (Enter)");
         import_csv_.SetText("Import CSV");
@@ -666,10 +703,13 @@ private:
         resolve_unmatched_.SetText("Resolve");
         resolve_unmatched_.Tip("Search Spotify for unresolved/missing Working rows. Strong unique matches are linked automatically; ambiguous rows stay amber for review.");
         export_csv_.SetText("Export CSV");
-        remove_working_.SetIcon(ICON_CONTENT_OUTLINED_REMOVE_48()).SetIconSize(DPI(16), DPI(16));
-        clear_working_.SetIcon(ICON_DESIGN_DELETE_48()).SetIconSize(DPI(16), DPI(16));
-        remove_working_.Tip("Remove the selected Working rows.");
-        clear_working_.Tip("Clear the local Working Playlist tracks while keeping its name. Spotify is not modified.");
+        import_csv_.Tip("Import a CSV directly into the local Working Playlist.");
+        paste_text_.Tip("Paste a text song list directly into the local Working Playlist.");
+        export_csv_.Tip("Export the current Working Playlist to CSV.");
+        remove_working_.SetIcon(ICON_CONTENT_OUTLINED_REMOVE_48()).SetIconSize(DPI(18), DPI(18));
+        clear_working_.SetIcon(ICON_DESIGN_DELETE_48()).SetIconSize(DPI(18), DPI(18));
+        remove_working_.Tip("Remove selected Working rows. The Delete key performs the same action.");
+        clear_working_.Tip("Clear all Working Playlist tracks while keeping its name. Spotify is not modified.");
         find_.Tip("Type a title, artist, or both and press Enter. Choose a Spotify result and it is added directly to Working.");
 
         inspector_panel_.Add(inspector_heading_); inspector_panel_.Add(inspector_art_);
@@ -681,16 +721,12 @@ private:
         inspector_heading_.SetText("TRACK DETAILS");
         inspector_title_.SetText("No Working track selected");
         notes_heading_.SetText("Notes");
-        play_spotify_.SetText("Play in Spotify");
+        play_spotify_.SetText("Open in Spotify");
+        play_spotify_.Tip("Open this track in Spotify. This does not control or replace the currently active Spotify player session.");
         review_match_.SetText("Review Match");
         review_match_.Hide();
         review_match_.Tip("Choose the correct Spotify candidate for an ambiguous Working row.");
         notes_.Tip("PlaylistLab-owned notes. These are stored locally with Working and are never sent to Spotify.");
-
-        UiItemRenderStyle track_style = track_renderer_.GetStyle();
-        track_style.image_extent = DPI(34);
-        track_style.image_radius = DPI(4);
-        track_renderer_.SetCustomStyle(track_style);
 
         playlist_list_.SetModel(playlist_model_)
                       .SetItemRender(playlist_renderer_)
@@ -698,6 +734,9 @@ private:
                       .EnableDragReorder(false)
                       .ShowDragHandle(false);
 
+        // Keep the image renderer list-owned. Giving it a custom style merely to
+        // tune artwork extent would detach it from UiList's selected/hot row
+        // palette. The default image renderer already fits artwork to row height.
         target_track_list_.SetModel(target_track_model_)
                           .SetItemRender(track_renderer_)
                           .SetSelectionMode(UILISTSEL_MULTI)
@@ -715,8 +754,8 @@ private:
                      .ShowDragHandle(true)
                      .SetDragSide(UiAlign::RIGHT)
                      .SetDragGlyph(ICON_DESIGN_DRAG_INDICATOR_48());
-        working_list_.EnableTransferTarget();
-        working_list_.Tip("Green/blue = publishable, amber = review, red = missing, grey = unresolved. Double-click an amber row to review it. Drag the small right grip to reorder.");
+        working_list_.EnableTransferTarget().EnableDeleteRequest();
+        working_list_.Tip("Green/blue = publishable, amber = review, red = missing, grey = unresolved. Ctrl/Shift select multiple rows; Delete removes the selection; drag the small right grip to reorder.");
     }
 
     void ApplyTheme()
@@ -747,8 +786,7 @@ private:
         UiButton::Style standard = UiTheme::ResolveButton(APP_THEME, APP_MODE, UiButtonRole::Standard);
         UiButton::Style subtle = UiTheme::ResolveButton(APP_THEME, APP_MODE, UiButtonRole::Subtle);
         UiButton::Style accent = UiTheme::ResolveButton(APP_THEME, APP_MODE, UiButtonRole::Accent);
-        for(UiButton *button : { &profile_add_, &profile_edit_, &profile_refresh_, &rename_spotify_,
-                                 &import_csv_, &paste_text_, &resolve_unmatched_, &remove_working_, &clear_working_,
+        for(UiButton *button : { &import_csv_, &paste_text_, &resolve_unmatched_,
                                  &play_spotify_, &review_match_ })
             button->SetCustomStyle(standard);
         open_spotify_.SetCustomStyle(subtle);
@@ -774,6 +812,10 @@ private:
         source.show_icons = false;
         source.show_metadata_marker = false;
         source.right_text_as_badge = false;
+        source.row_state_frame_enabled = true;
+        source.selected_face = Color(28, 52, 78);
+        source.selected_frame = Color(65, 167, 248);
+        source.selected_ink = White();
         target_track_list_.SetCustomStyle(source);
 
         UiList::Style working = source;
@@ -832,42 +874,28 @@ private:
             if(&source == &target_track_list_)
                 AddSpotifyRows(rows, true);
         };
+        working_list_.WhenDeleteRequest = [=] { RemoveWorkingSelected(); };
 
         review_match_.WhenAction = [=] { ReviewWorkingCandidate(); };
-        play_spotify_.WhenAction = [=] { PlaySelectedInSpotify(); };
+        play_spotify_.WhenAction = [=] { OpenSelectedTrackInSpotify(); };
         notes_.WhenAction = [=] { SaveInspectorNote(); };
     }
 
     void LayoutLibrary()
     {
         Rect rc = library_panel_.GetSize();
-        int margin = DPI(12), gap = DPI(5), w = max(0, rc.GetWidth() - margin * 2), y = margin;
+        int margin = DPI(12), w = max(0, rc.GetWidth() - margin * 2), y = margin;
         library_heading_.SetRect(margin, y, w, DPI(26)); y += DPI(30);
         library_hint_.SetRect(margin, y, w, DPI(36)); y += DPI(42);
-        int icon = DPI(30);
-        int selector_w = max(DPI(120), w - icon * 3 - gap * 3);
-        profile_selector_.SetRect(margin, y, selector_w, DPI(32));
-        int x = margin + selector_w + gap;
-        profile_add_.SetRect(x, y, icon, DPI(32)); x += icon + gap;
-        profile_edit_.SetRect(x, y, icon, DPI(32)); x += icon + gap;
-        profile_refresh_.SetRect(x, y, icon, DPI(32));
-        y += DPI(40);
+        library_profile_row_.SetRect(margin, y, w, DPI(32)); y += DPI(40);
         playlist_list_.SetRect(margin, y, w, max(0, rc.GetHeight() - y - margin));
     }
 
     void LayoutSpotify()
     {
         Rect rc = spotify_panel_.GetSize();
-        int margin = DPI(12), gap = DPI(6), w = max(0, rc.GetWidth() - margin * 2), y = margin;
-        int rename_w = DPI(32), open_w = DPI(104), split_w = DPI(128), label_w = DPI(94);
-        int controls = rename_w + open_w + split_w + label_w + gap * 3;
-        spotify_heading_.SetRect(margin, y, max(DPI(160), w - controls), DPI(30));
-        int x = max(margin, rc.GetWidth() - margin - controls);
-        spotify_to_working_label_.SetRect(x, y + DPI(4), label_w, DPI(24)); x += label_w + gap;
-        spotify_transfer_.SetRect(x, y, split_w, DPI(32)); x += split_w + gap;
-        open_spotify_.SetRect(x, y, open_w, DPI(32)); x += open_w + gap;
-        rename_spotify_.SetRect(x, y, rename_w, DPI(32));
-        y += DPI(36);
+        int margin = DPI(12), w = max(0, rc.GetWidth() - margin * 2), y = margin;
+        spotify_header_row_.SetRect(margin, y, w, DPI(32)); y += DPI(36);
         spotify_meta_.SetRect(margin, y, w, DPI(24)); y += DPI(28);
         target_track_list_.SetRect(margin, y, w, max(0, rc.GetHeight() - y - margin));
     }
@@ -875,31 +903,9 @@ private:
     void LayoutWorking()
     {
         Rect rc = working_panel_.GetSize();
-        int margin = DPI(12), gap = DPI(6), w = max(0, rc.GetWidth() - margin * 2), y = margin;
-
-        int destination_label_w = DPI(48), destination_w = DPI(132);
-        int right = destination_label_w + gap + destination_w;
-        working_heading_.SetRect(margin, y, DPI(155), DPI(30));
-        int name_x = margin + DPI(160);
-        working_name_.SetRect(name_x, y, max(DPI(150), w - DPI(160) - right - gap), DPI(32));
-        int dx = rc.GetWidth() - margin - right;
-        destination_label_.SetRect(dx, y + DPI(4), destination_label_w, DPI(24));
-        destination_.SetRect(dx + destination_label_w + gap, y, destination_w, DPI(32));
-        y += DPI(38);
-
-        int icon = DPI(30), import_w = DPI(78), paste_w = DPI(78), resolve_w = DPI(70), export_w = DPI(82);
-        int fixed = import_w + paste_w + resolve_w + export_w + icon * 2 + gap * 6;
-        int find_w = max(DPI(150), w - fixed);
-        int x = margin;
-        find_.SetRect(x, y, find_w, DPI(32)); x += find_w + gap;
-        import_csv_.SetRect(x, y, import_w, DPI(32)); x += import_w + gap;
-        paste_text_.SetRect(x, y, paste_w, DPI(32)); x += paste_w + gap;
-        resolve_unmatched_.SetRect(x, y, resolve_w, DPI(32)); x += resolve_w + gap;
-        export_csv_.SetRect(x, y, export_w, DPI(32)); x += export_w + gap;
-        remove_working_.SetRect(x, y, icon, DPI(32)); x += icon + gap;
-        clear_working_.SetRect(x, y, icon, DPI(32));
-        y += DPI(40);
-
+        int margin = DPI(12), w = max(0, rc.GetWidth() - margin * 2), y = margin;
+        working_header_row_.SetRect(margin, y, w, DPI(32)); y += DPI(38);
+        working_action_row_.SetRect(margin, y, w, DPI(32)); y += DPI(40);
         working_list_.SetRect(margin, y, w, max(0, rc.GetHeight() - y - margin));
     }
 
@@ -1077,6 +1083,36 @@ private:
             working_source_ = source;
         else if(working_source_ != source && working_source_ != "Mixed sources")
             working_source_ = "Mixed sources";
+    }
+
+    int CountIncomingDuplicateUris(const Vector<String>& incoming) const
+    {
+        Index<String> seen;
+        for(const TrackEntry& entry : working_document_.tracks) {
+            String uri = entry.ResolvedUri();
+            if(IsSpotifyPublishableUri(uri))
+                seen.FindAdd(uri);
+        }
+
+        int duplicates = 0;
+        for(const String& uri : incoming) {
+            if(!IsSpotifyPublishableUri(uri))
+                continue;
+            if(seen.Find(uri) >= 0)
+                duplicates++;
+            seen.FindAdd(uri);
+        }
+        return duplicates;
+    }
+
+    bool ConfirmIncomingDuplicates(const Vector<String>& incoming)
+    {
+        int duplicates = CountIncomingDuplicateUris(incoming);
+        if(duplicates <= 0)
+            return true;
+        String question = Format("%d incoming track occurrence%s would duplicate a Spotify track already in Working (or another item in this add).\n\nKeep the duplicate occurrence%s?",
+                                 duplicates, duplicates == 1 ? "" : "s", duplicates == 1 ? "" : "s");
+        return PromptYesNo(question);
     }
 
     Image GetTrackArtwork(const SpotifyTrack& track)
@@ -1662,6 +1698,16 @@ private:
     void AddSpotifyRows(const Vector<int>& rows, bool from_drag)
     {
         if(rows.IsEmpty()) return;
+        Vector<String> incoming;
+        for(int row : rows)
+            if(row >= 0 && row < target_tracks_.GetCount() && IsSpotifyPublishableUri(target_tracks_[row].uri))
+                incoming.Add(target_tracks_[row].uri);
+        if(!ConfirmIncomingDuplicates(incoming)) {
+            last_notice_ = "Add cancelled; Working was not changed.";
+            UpdateSummary();
+            return;
+        }
+
         bool was_empty = working_document_.tracks.IsEmpty();
         MergeWorkingSource("Spotify: " + target_playlist_name_);
         int added = 0;
@@ -1701,15 +1747,27 @@ private:
         AddSpotifyRows(rows, false);
     }
 
-    void AppendImportedDocument(PlaylistDocument& incoming, const String& source)
+    bool AppendImportedDocument(PlaylistDocument& incoming_document, const String& source)
     {
+        Vector<String> incoming;
+        for(const TrackEntry& entry : incoming_document.tracks) {
+            String uri = entry.ResolvedUri();
+            if(IsSpotifyPublishableUri(uri))
+                incoming.Add(uri);
+        }
+        if(!ConfirmIncomingDuplicates(incoming)) {
+            last_notice_ = "Import cancelled; Working was not changed.";
+            UpdateSummary();
+            return false;
+        }
+
         bool was_empty = working_document_.tracks.IsEmpty();
         MergeWorkingSource(source);
-        int added = incoming.tracks.GetCount();
-        for(TrackEntry& entry : incoming.tracks)
+        int added = incoming_document.tracks.GetCount();
+        for(TrackEntry& entry : incoming_document.tracks)
             working_document_.tracks.Add(pick(entry));
-        if(was_empty && !incoming.name.IsEmpty()) {
-            working_document_.name = incoming.name;
+        if(was_empty && !incoming_document.name.IsEmpty()) {
+            working_document_.name = incoming_document.name;
             RefreshWorkingName();
         }
         working_document_.dirty = working_document_.dirty || added > 0;
@@ -1717,6 +1775,7 @@ private:
         last_notice_ = Format("Added %d imported track%s directly to Working. Press Resolve when you want Spotify matching.",
                               added, added == 1 ? "" : "s");
         RefreshWorkingProjection(working_document_.tracks.IsEmpty() ? -1 : working_document_.tracks.GetCount() - 1);
+        return true;
     }
 
     void ImportCsvIntoWorking()
@@ -1726,7 +1785,8 @@ private:
         if(!FileExists(path)) { Exclamation("The selected CSV file could not be opened."); return; }
         PlaylistImportResult result = ImportPlaylistCsv(LoadFile(path), path);
         int warnings = result.warnings.GetCount();
-        AppendImportedDocument(result.document, "CSV: " + GetFileName(path));
+        if(!AppendImportedDocument(result.document, "CSV: " + GetFileName(path)))
+            return;
         if(warnings) {
             last_notice_ = Format("CSV added to Working with %d warning%s; press Resolve when ready to match unresolved rows.", warnings, warnings == 1 ? "" : "s");
             UpdateSummary();
@@ -1739,7 +1799,8 @@ private:
         if(TrimBoth(text).IsEmpty()) { Exclamation("The clipboard does not contain a song list."); return; }
         PlaylistImportResult result = ImportPlaylistText(text, "Clipboard");
         int warnings = result.warnings.GetCount();
-        AppendImportedDocument(result.document, "Clipboard");
+        if(!AppendImportedDocument(result.document, "Clipboard"))
+            return;
         if(warnings) {
             last_notice_ = Format("Clipboard added to Working with %d warning%s; press Resolve when ready.", warnings, warnings == 1 ? "" : "s");
             UpdateSummary();
@@ -1794,6 +1855,14 @@ private:
         UiChoiceDialog dialog("Add Spotify Track to Working", rows);
         int selected = dialog.Choose();
         if(selected < 0 || selected >= pending_find_tracks_.GetCount()) return;
+        Vector<String> incoming;
+        if(IsSpotifyPublishableUri(pending_find_tracks_[selected].uri))
+            incoming.Add(pending_find_tracks_[selected].uri);
+        if(!ConfirmIncomingDuplicates(incoming)) {
+            last_notice_ = "Spotify search result was not added; Working was not changed.";
+            UpdateSummary();
+            return;
+        }
         MergeWorkingSource("Spotify Find");
         working_document_.tracks.Add(EntryFromSpotify(pending_find_tracks_[selected]));
         working_document_.dirty = true;
@@ -2223,7 +2292,7 @@ private:
         UpdateSummary(); Exclamation(last_notice_);
     }
 
-    void PlaySelectedInSpotify()
+    void OpenSelectedTrackInSpotify()
     {
         int i = working_list_.GetCursor();
         if(i < 0 || i >= working_document_.tracks.GetCount()) return;
@@ -2285,24 +2354,30 @@ private:
 
     UiTitleCard header_;
     UiPanel library_panel_, spotify_panel_, working_panel_, inspector_panel_;
+    UiBoxLayout library_profile_row_{UiDirection::H};
+    UiBoxLayout spotify_header_row_{UiDirection::H};
+    UiBoxLayout working_header_row_{UiDirection::H};
+    UiBoxLayout working_action_row_{UiDirection::H};
 
     UiLabel library_heading_, library_hint_;
     UiDropdown profile_selector_;
-    UiButton profile_add_, profile_edit_, profile_refresh_;
+    UiToolButton profile_add_, profile_edit_, profile_refresh_;
     UiListModel playlist_model_;
     UiItemRenderImage playlist_renderer_;
     UiList playlist_list_;
 
     UiLabel spotify_heading_, spotify_meta_, spotify_to_working_label_;
     UiSplitButton spotify_transfer_;
-    UiButton open_spotify_, rename_spotify_;
+    UiButton open_spotify_;
+    UiToolButton rename_spotify_;
     UiListModel target_track_model_;
     PlaylistTransferList target_track_list_;
 
     UiLabel working_heading_, destination_label_;
     UiLineEdit working_name_, find_;
     UiSplitButton destination_;
-    UiButton import_csv_, paste_text_, resolve_unmatched_, export_csv_, remove_working_, clear_working_;
+    UiButton import_csv_, paste_text_, resolve_unmatched_, export_csv_;
+    UiToolButton remove_working_, clear_working_;
     UiListModel working_model_;
     PlaylistTransferList working_list_;
     UiItemRenderImage track_renderer_;
