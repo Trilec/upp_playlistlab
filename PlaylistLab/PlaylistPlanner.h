@@ -58,6 +58,12 @@ Vector<PlaylistMove> BuildMoveSequence(const Vector<String>& current_uris,
                                        const Vector<String>& desired_uris);
 Vector<String> ApplyMoveSequence(Vector<String> current, const Vector<PlaylistMove>& moves);
 
+// Return only Working occurrences not already represented by target, retaining
+// Working order and duplicate multiplicity. This is the pure plan used by the
+// Append Missing UI/provider path; it never implies reordering or deletion.
+Vector<String> BuildAppendMissingUris(const Vector<String>& working_uris,
+                                      const Vector<String>& target_uris);
+
 } // namespace Upp
 
 #endif
