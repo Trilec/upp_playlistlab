@@ -1,118 +1,178 @@
 # ACTIVE WORK
 
-SOURCE BASE: `c205094486097f1aecb7067781d304677e8e7b8e` (`main` source-closure checkpoint)
-TESTED CHECKPOINT: `1989b0e9ff9e92d8c52a0b283d0706eedb11bc9a`
-TASK: PL-001 — completed PlaylistLab workspace and guarded Spotify destination workflows
-STATUS: WINDOWS COMPILE/TEST ACCEPTED; HUMAN GUI / OPTIONAL LIVE SPOTIFY VALIDATION NEXT
+IMPLEMENTATION SOURCE: `416ca74640740a42cdb8d96a441dda05471658e1`
+SIMPLIFIED-SLICE BASE: `9b23446a501e79c449f796350552dd83d7a2d33e`
+HISTORICAL TESTED CHECKPOINT: `1989b0e9ff9e92d8c52a0b283d0706eedb11bc9a`
+TASK: PL-002 — simplified two-playlist PlaylistLab workspace
+STATUS: SOURCE / HYGIENE CLOSED; WINDOWS COMPILE + CORE TEST VALIDATION REQUIRED
 
-## CURRENT PRODUCT STATE
+## CURRENT PRODUCT MODEL
 
-PlaylistLab has three separate playlist concepts with explicit ownership:
+PlaylistLab now has two visible playlist surfaces:
 
-1. **Spotify Playlist** — selected Spotify target/source context and its readable items.
-2. **Imported Playlist** — CSV, clipboard, or typed Spotify Find staging with match/review/missing evidence.
-3. **Working Playlist** — the only editable/publish-authoritative document used for local reorder, Apply, Create New Playlist, and explicit Replace.
+1. **Selected Spotify Playlist** — provider/source/target context.
+2. **Working Playlist** — local authored state and the only publish-authoritative list.
 
-Spotify and Imported lists support Ctrl/Shift multi-selection, Add Selected/Add All, artwork, and copy drag/drop into Working. Working remains semantic authority for reorder; `UiList` internal mutation is disabled and reorder is applied to `PlaylistDocument` before rebuilding the projection. Empty Working remains an active drop target. The Working drag grip is on the right and multi-selection is preserved when a selected source row begins a transfer drag.
+The retired visible Imported Playlist has been removed. CSV import, clipboard text, and Spotify Find add directly to Working. CSV/Paste do **not** silently authorize or match against Spotify; the user presses **Resolve** explicitly when ready. Ambiguous matches remain review state until explicitly confirmed.
 
-Imported Playlist supports Import CSV, Paste Text, Export CSV, Resolve, Review Match, Remove, Clear, and typed Spotify **Find**. Enter in the Find editor invokes the same Spotify search as the Find button. Search results are staged in Imported and do not become publish authority until explicitly copied into Working.
+The old monolithic `PlaylistLab/main.cpp` has been deleted. `PlaylistLab/PlaylistWorkspace.cpp` is the sole GUI entry listed by `PlaylistLab.upp` and contains the single `GUI_APP_MAIN`.
 
-## CLIENT / LOCAL STATE
+## WORKING PLAYLIST
 
-PlaylistLab stores friendly-name + Spotify Client ID profiles in `playlistlab.clients.json`; no Client Secret is requested or stored. `SpotifyAuth` remains token authority for the selected Client ID. Changing Client ID clears tokens belonging to the previous client.
+Working supports:
 
-Working state and source label persist in `playlistlab.working.json`; UI target/order state persists in `playlistlab.ui.json`; Spotify auth state persists in `playlistlab.spotify.json`; artwork is cached under `playlistlab-cache`. Working state preserves candidates and match state so unresolved/review/missing evidence survives restart.
+- editable playlist name;
+- Ctrl/Shift multi-selection;
+- Spotify -> Working copy by button or drag/drop;
+- source split-button with persistent **Add Selected / Add All** default;
+- local right-grip drag reorder with request-first document mutation;
+- Find on Enter, CSV import, Paste Text, explicit Resolve, Export CSV;
+- remove selected / clear tracks while preserving the Working name;
+- artwork and compact match-state markers;
+- contextual Review Match for amber rows;
+- right-side inspector with title/artist/album/time/state, Play in Spotify, and local notes.
 
-## SPOTIFY DESTINATIONS AND SAFETY
+`TrackEntry::user_note` is separate from resolver/match `note`. It is cloned and persisted in `playlistlab.working.json`, survives resolution resets, and is never sent to Spotify. Inspector notes are committed before reorder, resolve, review, remove, clear, close, and other index-changing operations so notes cannot migrate to the wrong row.
 
-Only `TRACK_EXACT` / `TRACK_AUTO` expose publishable Spotify identity. Review/Missing/Unresolved rows remain blocked.
+## SPOTIFY CLIENT PROFILES
 
-**Apply to Selected Playlist** retains the guarded non-destructive publisher. It executes the exact stored preview after a fresh target/snapshot read, appends only missing occurrences, preserves unrelated/unavailable positions, performs the exact stored reorder plan, uses evolving snapshots, treats failed mutations conservatively, and succeeds only after exact final readback. Apply never deletes or replaces target items.
+PlaylistLab stores friendly-name + Client ID profiles in `playlistlab.clients.json`. The compact profile strip exposes selector, add, edit, and refresh. Add/Edit uses a dialog containing Friendly Name and Spotify Client ID; Delete is inside the edit dialog.
 
-**Create New Playlist** creates a private Spotify playlist and populates it from the exact publishable Working order. The worker owns its URI sequence through member-held pending state rather than capturing a U++ `Vector` by value. If creation succeeds but population stops, PlaylistLab reports that partial state and reloads playlist metadata rather than pretending the operation was atomic.
+No Client Secret is requested or stored. Changing Client ID clears tokens belonging to the previous client through `SpotifyAuth`.
 
-**Replace Selected Playlist** is a separate explicitly destructive path. It requires an editable loaded target, exact before/after preview, destructive warning, explicit second confirmation, fresh target/snapshot preflight, exact desired Working order, and exact final readback. It is not silently folded into Apply. `SpotifyClient::ExecuteReplaceItems` replaces/clears the first 100 URIs with `PUT /playlists/{id}/items`, appends any tail in guarded batches, recovers observed state when possible, and reports stale/partial/observed evidence.
+## SPOTIFY READ ACCESS
 
-No delete/replace/rollback behavior exists inside guarded Apply.
+Playlist metadata visibility, item readability, and editability are deliberately separate.
 
-## SOURCE-CLOSURE CORRECTIONS
+`SpotifyPlaylistInfo` now tracks `items_access_checked` separately from `items_accessible` and `editable`.
 
-The final source review closed the integration issues found before the compile gate:
+Library state:
 
-- fixed invalid `Vector<String>::Find()` use in the track artwork queue;
-- preserved Working `UiList` internal reorder capture in `PlaylistTransferList`;
-- preserved Ctrl/Shift multi-selection when starting Spotify/Imported transfer drag;
-- kept empty Working enabled as a transfer drop target;
-- wired Enter in Imported Find and used the explicit UTF-8 editor text API;
-- removed the U++ `Vector<String>` by-value capture from the create-playlist worker;
-- bounded track-artwork queue attempts;
-- bounded failed artwork fetches at `SpotifyImageCache` with a transparent in-memory marker so a bad URL is not requeued indefinitely during the session while a restart may retry it;
-- refreshed target accessibility/artwork state after verified Apply readback;
-- checked split provider declarations/definitions and package membership, including `SpotifyClientSearch.cpp`, `SpotifyClientReplace.cpp`, and `PlaylistTransferList.h`;
-- retained exact guarded Apply authority and did not weaken deterministic planner behavior.
+- `EDIT` — editable playlist;
+- `CHECK` — noneditable playlist whose item endpoint has not yet been proven;
+- `SOURCE` — noneditable playlist whose item list was successfully read;
+- `META` — actual Spotify 403/404 from the playlist-items path.
 
-Final source-closure commit: `c205094486097f1aecb7067781d304677e8e7b8e`.
+Fresh playlist metadata is not preclassified as readable. Selection attempts the real item request. Only success promotes read access; only 403/404 records metadata-only. Transient network/token errors do not permanently mark a playlist META. Publish controls remain governed by editability.
+
+This matches Spotify's current Web API distinction: a playlist can be visible in `/me/playlists` or the Spotify client while third-party item enumeration may still be refused unless the current user owns/collaborates on it.
+
+## DESTINATION ACTIONS
+
+The Working destination split-button remembers the selected default:
+
+### Create New
+
+Creates a new private Spotify playlist from exact publishable Working order. If playlist creation succeeds but population stops, PlaylistLab reports the partial result rather than pretending atomic success.
+
+### Append Missing
+
+Append Missing is a real append-only operation, not a renamed reorder planner.
+
+Pure deterministic helper:
+
+`BuildAppendMissingUris(working_uris, target_uris)`
+
+It is occurrence-aware and preserves Working order for missing duplicate occurrences.
+
+Provider execution:
+
+1. stable-read current target + snapshot;
+2. reject stale expected snapshot;
+3. compute missing occurrences;
+4. append only those URIs at the end;
+5. stable-read final target;
+6. require exact `original target + planned additions` before success.
+
+No reorder and no deletion occur in Append Missing.
+
+### Replace
+
+Replace remains explicitly destructive. It requires an editable loaded target, exact publishable Working sequence, preview confirmation, fresh snapshot preflight, and exact final readback. The preview is now the confirmation dialog; there is no redundant second confirmation prompt.
+
+### Preview behavior
+
+Create / Append / Replace all show an exact preview. Cancel performs no write. The positive action uses a restrained green pulse. Mutation failures are treated conservatively; stale/partial states are surfaced and no hidden retry/replan/rollback occurs.
+
+## LEGACY GUARDED PLANNER
+
+The deterministic reference-slot/reference-first planner and guarded Apply provider remain core-tested infrastructure, but the placement/order-mode UI is no longer the primary product workflow. Do not reintroduce the retired third-list / Apply-order UI without a new explicit product decision.
+
+## PACKAGE / SOURCE HYGIENE
+
+Current `PlaylistLab.upp` includes:
+
+- `PlaylistModel.*`
+- `PlaylistIO.*`
+- `PlaylistPlanner.*`
+- `PlaylistLocalState.*`
+- `SpotifyAuth.*`
+- `SpotifyClient.*`
+- `SpotifyClientSearch.cpp`
+- `SpotifyClientAppend.cpp`
+- `SpotifyClientReplace.cpp`
+- `SpotifyClientDetails.cpp`
+- `SpotifyImageCache.*`
+- `PlaylistTransferList.h`
+- `PlaylistWorkspace.cpp`
+
+`main.cpp` is removed. The repository tree contains no second GUI entry source.
+
+Declaration/definition closure checked for Create, search/resolve, guarded Apply, UpdatePlaylistDetails, ExecuteAppendMissing, and ExecuteReplaceItems. Append planner declarations/definitions and core tests are package-visible through the existing `PlaylistLab` dependency.
+
+## CORE TEST CHANGES
+
+`PlaylistCoreTest` retains the historical deterministic planner/matching coverage and adds tests for:
+
+- occurrence-aware Append Missing with duplicates and order preservation;
+- no-op append planning;
+- empty-target append planning;
+- preservation of `user_note` through `CloneTrackEntry` and `ClearResolution` while resolver evidence is cleared.
+
+The previous accepted run was **88 checks** at the historical checkpoint above. The expanded current test has **not yet been run on Windows**, so record the actual new check count from validation rather than assuming it.
 
 ## UI DEPENDENCY
 
-Exact `upp_Ui/main` dependency accepted for this PlaylistLab validation:
+Expected exact `upp_Ui/main` dependency for compile validation:
 
 `91f2926f57a86dfc6df08d9b0ae10173085dcbf5`
 
-The earlier UiList/UiTable decoration repair remains in that ancestry: cumulative drag/badge lanes, authored gaps, single badge-text ownership, composed drag/check/icon/metadata geometry, rounded inner-viewport clipping, and the subsequent Draw::Begin/End fix.
-
-## VERIFIED WINDOWS VALIDATION
-
-Gary validated the exact pair:
-
-- PlaylistLab: `1989b0e9ff9e92d8c52a0b283d0706eedb11bc9a`
-- upp_Ui: `91f2926f57a86dfc6df08d9b0ae10173085dcbf5`
-
-Results:
-
-- `UiListStyleContractTest`: PASS — `checks=15 failed=0`
-- `UiModelViewPerformanceTest`: PASS — `Checks: 52, Fails: 0`
-- relevant Ui sources/test packages compiled successfully with no diagnostics
-- `PlaylistCoreTest`: PASS — `88 checks completed`, 0 failures
-- PlaylistLab CLANGx64 `GUI MT`: compile PASS, link PASS, no diagnostics
-- `PlaylistLab.upp` package membership checked for `PlaylistTransferList.h`, `SpotifyClientSearch.cpp`, and `SpotifyClientReplace.cpp`
-- Spotify declarations/definitions plus Create/Apply/Replace references checked
-- `git diff --check`: PASS
-- validation worktree: clean
-- no temporary/unrelated tracked files
-- no fixups were required
-- no Spotify mutation was performed
-
-Final validated executable path:
-
-`E:\apps\github\upp_playlistlab\build\PlaylistLab.exe`
-
-## BRANCH STATE
-
-`Trilec/upp_playlistlab` has only `main`. No stale PlaylistLab feature branches remain.
+This is the previously accepted UiList/Ui item-render baseline used by PlaylistLab.
 
 ## VALIDATION BOUNDARY
 
-Windows compile/test acceptance is VERIFIED for the exact SHAs above. The current code has not yet received a complete human-visible interaction acceptance for every newly added workflow, and Create/Apply/Replace have not yet been exercised against a disposable live Spotify target in this closure slice.
+Current implementation source `416ca746...` is source-reviewed and package-closed but **not yet Windows compile/test accepted**.
 
-Do not turn successful compile/test evidence into a claim that live Spotify mutation paths are already acceptance-tested.
+Historical evidence only:
+
+- PlaylistCoreTest: PASS — 88 checks at `1989b0e9...`;
+- PlaylistLab CLANGx64 `GUI MT`: compile/link PASS at that older checkpoint;
+- final executable convention previously validated.
+
+Do not carry those results forward as current validation.
+
+No live Spotify Create/Append/Replace mutation is required for the compile gate and none should be performed by the compile agent.
 
 ## BUILD OUTPUT CONVENTION
 
-Intermediate U++ objects may live below `build`, but the final executable for Curt remains:
+Intermediate U++ objects may live under:
+
+`E:\apps\github\upp_playlistlab\build\_obj`
+
+The final executable for Curt must be directly at:
 
 `E:\apps\github\upp_playlistlab\build\PlaylistLab.exe`
 
 ## NEXT ACTION
 
-Curt performs the human-visible GUI review of the validated executable, focusing on:
+Windows compile/test agent:
 
-- typed Find -> Imported staging;
-- track artwork in Spotify / Imported / Working rows;
-- Spotify -> Working and Imported -> Working drag/drop, including multi-selection;
-- Working internal reorder with right-side grip;
-- tooltip/help clarity for Resolve, placement/order mode, and destination actions;
-- Create New Playlist / Apply to Selected Playlist / Replace Selected Playlist visibility and confirmation flow;
-- shared/read-only Spotify playlist behavior where the Web API permits or refuses item access.
+1. refresh exact current `origin/main` and report SHA;
+2. verify `upp_Ui` dependency SHA;
+3. run `PlaylistCoreTest` and report exact check/failure count;
+4. build PlaylistLab CLANGx64 `GUI MT` with final output at `build\PlaylistLab.exe`;
+5. run `git diff --check` and confirm clean worktree / no unrelated files;
+6. if build succeeds, launch and hold PlaylistLab open if that execution environment can display it;
+7. do not perform live Spotify mutations.
 
-After that visual pass, if desired, choose a clearly disposable Spotify playlist/account context and run bounded live mutation acceptance in this order: Create New first, guarded Apply second, explicit Replace last. Do not use an important playlist for initial mutation validation.
+Curt then performs the human-visible GUI review from the root build executable.
