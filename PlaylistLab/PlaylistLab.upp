@@ -20,12 +20,13 @@ file
 	SpotifyClient.h,
 	SpotifyClient.cpp,
 	SpotifyClientSearch.cpp,
+	SpotifyClientAppend.cpp,
 	SpotifyClientReplace.cpp,
 	SpotifyClientDetails.cpp,
 	SpotifyImageCache.h,
 	SpotifyImageCache.cpp,
 	PlaylistTransferList.h,
-	main.cpp;
+	PlaylistWorkspace.cpp;
 
 mainconfig
 	"" = "GUI MT";
