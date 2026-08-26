@@ -132,7 +132,8 @@ private:
     {
         UiThemeMode mode = UiTheme::GetContext().mode;
         title_.SetCustomStyle(UiTheme::ResolveTitleCard(UiThemePreset::Minimal, mode));
-        body_.SetCustomStyle(UiTheme::ResolveMultiEdit(UiThemePreset::Minimal, mode));
+        // UiMultiEdit consumes the shared UiBaseEdit theme automatically; do not
+        // detach it with a made-up app-only style just for this dialog.
         UiButton::Style standard = UiTheme::ResolveButton(UiThemePreset::Minimal, mode, UiButtonRole::Standard);
         UiButton::Style subtle = UiTheme::ResolveButton(UiThemePreset::Minimal, mode, UiButtonRole::Subtle);
         for(UiButton *button : { &dashboard_, &account_apps_, &api_changes_, &copy_redirect_ })
