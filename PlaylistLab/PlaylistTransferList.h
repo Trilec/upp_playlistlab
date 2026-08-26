@@ -7,7 +7,8 @@ namespace Upp {
 
 // PlaylistLab-specific copy drag between source lists and the Working list.
 // UiList remains authoritative for selection and for Working's internal reorder;
-// this adapter only transports the selected row indices between distinct lists.
+// this adapter only transports selected row indices between distinct lists and
+// surfaces semantic requests back to PlaylistWorkspace for document mutation.
 class PlaylistTransferList : public UiList {
 public:
     typedef PlaylistTransferList CLASSNAME;
@@ -24,9 +25,16 @@ public:
         return *this;
     }
 
+    PlaylistTransferList& EnableDeleteRequest(bool on = true)
+    {
+        delete_request_enabled_ = on;
+        return *this;
+    }
+
     const Vector<int>& GetTransferRows() const { return transfer_rows_; }
 
     Event<const PlaylistTransferList&, const Vector<int>&> WhenTransferDrop;
+    Event<> WhenDeleteRequest;
 
     virtual void LeftDown(Point p, dword flags) override
     {
@@ -96,9 +104,20 @@ public:
             WhenTransferDrop(*source, source->GetTransferRows());
     }
 
+    virtual bool Key(dword key, int count) override
+    {
+        if(delete_request_enabled_ && key == K_DELETE && GetSelectionCount() > 0) {
+            if(WhenDeleteRequest)
+                WhenDeleteRequest();
+            return true;
+        }
+        return UiList::Key(key, count);
+    }
+
 private:
     bool transfer_source_ = false;
     bool transfer_target_ = false;
+    bool delete_request_enabled_ = false;
     bool transfer_pressed_ = false;
     Vector<int> transfer_rows_;
 };
