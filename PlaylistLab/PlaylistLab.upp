@@ -26,6 +26,8 @@ file
 	SpotifyImageCache.h,
 	SpotifyImageCache.cpp,
 	PlaylistTransferList.h,
+	PlaylistHelp.h,
+	PlaylistHelp.cpp,
 	PlaylistWorkspace.cpp;
 
 mainconfig
