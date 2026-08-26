@@ -8,13 +8,14 @@
 #include "SpotifyClient.h"
 #include "SpotifyImageCache.h"
 #include "PlaylistTransferList.h"
+#include "PlaylistHelp.h"
 
 using namespace Upp;
 
 namespace {
 
 const UiThemePreset APP_THEME = UiThemePreset::Minimal;
-const UiThemeMode   APP_MODE  = UiThemeMode::Dark;
+UiThemeMode         APP_MODE  = UiThemeMode::Dark;
 
 enum TransferAction {
     TRANSFER_SELECTED = 0,
@@ -27,7 +28,16 @@ enum DestinationAction {
     DEST_REPLACE = 2,
 };
 
-Color AppBackground() { return Color(18, 18, 18); }
+enum InspectorSource {
+    INSPECTOR_NONE = 0,
+    INSPECTOR_SPOTIFY,
+    INSPECTOR_WORKING,
+};
+
+Color AppBackground()
+{
+    return APP_MODE == UiThemeMode::Dark ? Color(18, 18, 18) : Color(247, 248, 250);
+}
 
 String ValueString(const ValueMap& map, const char *key)
 {
@@ -617,7 +627,28 @@ private:
             .LineAlign(UiCrossAlign::Center)
             .LineThickness(DPI(1))
             .LineColorEnabled(true)
-            .LineColor(Color(72, 72, 72));
+            .LineColor(APP_MODE == UiThemeMode::Dark ? Color(72, 72, 72) : Color(205, 210, 218));
+    }
+
+    void UpdateHeaderActionIcons()
+    {
+        header_help_.SetIcon(ICON_DESIGN_HELP_48()).SetIconSize(DPI(18), DPI(18));
+        header_theme_.SetIcon(APP_MODE == UiThemeMode::Dark ? ICON_ACTION_LIGHT_MODE_48() : ICON_ACTION_DARK_MODE_48())
+                     .SetIconSize(DPI(18), DPI(18));
+        header_exit_.SetIcon(ICON_DESIGN_MODE_OFF_ON_48()).SetIconSize(DPI(18), DPI(18));
+        header_theme_.Tip(APP_MODE == UiThemeMode::Dark ? "Switch PlaylistLab to light theme" : "Switch PlaylistLab to dark theme");
+    }
+
+    void ToggleTheme()
+    {
+        APP_MODE = APP_MODE == UiThemeMode::Dark ? UiThemeMode::Light : UiThemeMode::Dark;
+        UiThemeContext theme = UiTheme::GetContext();
+        theme.preset = APP_THEME;
+        theme.mode = APP_MODE;
+        UiTheme::Set(theme);
+        UpdateHeaderActionIcons();
+        ApplyTheme();
+        Refresh();
     }
 
     void BuildUi()
@@ -626,7 +657,16 @@ private:
         header_.SetTitle("PlaylistLab")
                .SetSubTitle("Spotify Playlist  →  Working Playlist  →  Spotify")
                .ShowTitleLine(false)
-               .SetContentInset(DPI(8));
+               .SetContentInset(DPI(8))
+               .SetContentCell(header_actions_);
+        header_actions_.SetDirection(UiDirection::H).SetGap(DPI(4)).SetInset(0).SetAlignItems(UiCrossAlign::Center);
+        header_actions_.AddSpacer(1).Expand(1);
+        header_actions_.Add(header_help_).Fixed(DPI(34));
+        header_actions_.Add(header_theme_).Fixed(DPI(34));
+        header_actions_.Add(header_exit_).Fixed(DPI(34));
+        header_help_.Tip("PlaylistLab help: Spotify Client ID setup, authorization, workflow and troubleshooting");
+        header_exit_.Tip("Close PlaylistLab");
+        UpdateHeaderActionIcons();
 
         library_panel_.Add(library_heading_); library_panel_.Add(library_hint_);
         library_panel_.Add(library_profile_row_); library_panel_.Add(playlist_list_);
@@ -634,12 +674,13 @@ private:
         library_hint_.SetText("Choose a Spotify playlist. Readable tracks can be copied or dragged into Working.");
         library_profile_row_.SetDirection(UiDirection::H).SetGap(DPI(5)).SetAlignItems(UiCrossAlign::Stretch);
         library_profile_row_.Add(profile_selector_).Expand(1).MinWidth(DPI(120));
-        library_profile_row_.Add(profile_add_).Fixed(DPI(32));
-        library_profile_row_.Add(profile_edit_).Fixed(DPI(32));
-        library_profile_row_.Add(profile_refresh_).Fixed(DPI(32));
-        profile_add_.SetIcon(ICON_CONTENT_OUTLINED_ADD_48()).SetIconSize(DPI(18), DPI(18));
-        profile_edit_.SetIcon(ICON_DESIGN_EDIT_TEXT_48()).SetIconSize(DPI(18), DPI(18));
-        profile_refresh_.SetIcon(CtrlImg::redo()).SetIconSize(DPI(18), DPI(18));
+        library_profile_row_.Add(profile_add_).Fixed(DPI(34));
+        library_profile_row_.Add(profile_edit_).Fixed(DPI(34));
+        library_profile_row_.Add(profile_refresh_).Fixed(DPI(34));
+        profile_add_.SetIcon(ICON_CONTENT_OUTLINED_ADD_CIRCLE_OUTLINE_48()).SetIconSize(DPI(20), DPI(20));
+        profile_edit_.SetIcon(ICON_DESIGN_EDIT_TEXT_48()).SetIconSize(DPI(20), DPI(20));
+        profile_refresh_.SetIcon(CtrlImg::redo()).SetIconSize(DPI(20), DPI(20));
+        profile_selector_.Tip("Spotify Developer Client ID profiles. Use Help (?) for the step-by-step setup guide.");
         profile_add_.Tip("Add a Spotify Client ID profile.");
         profile_edit_.Tip("Edit the selected profile name and Client ID. Delete is available inside the editor.");
         profile_refresh_.Tip("Authorize if needed and refresh Spotify playlists for this Client ID.");
@@ -652,7 +693,7 @@ private:
         spotify_header_row_.Add(spotify_to_working_label_).Fit();
         spotify_header_row_.Add(spotify_transfer_).Fit().MinWidth(DPI(124));
         spotify_header_row_.Add(open_spotify_).Fit();
-        spotify_header_row_.Add(rename_spotify_).Fixed(DPI(32));
+        spotify_header_row_.Add(rename_spotify_).Fixed(DPI(34));
         spotify_heading_.SetText("SELECTED SPOTIFY PLAYLIST");
         spotify_meta_.SetText("Choose a playlist from the library.");
         spotify_to_working_label_.SetText("Working Playlist");
@@ -662,9 +703,10 @@ private:
         SetTransferAction(transfer_action_, false);
         open_spotify_.SetText("Open Spotify");
         open_spotify_.Tip("Open the selected Spotify playlist in Spotify.");
-        rename_spotify_.SetIcon(ICON_DESIGN_EDIT_TEXT_48()).SetIconSize(DPI(18), DPI(18));
+        rename_spotify_.SetIcon(ICON_DESIGN_EDIT_TEXT_48()).SetIconSize(DPI(20), DPI(20));
         rename_spotify_.Tip("Rename the selected editable Spotify playlist.");
         spotify_transfer_.Tip("Copy tracks from the selected Spotify playlist into Working. The chosen dropdown action becomes the default button action.");
+        target_track_list_.Tip("Select a Spotify track to inspect its artwork and details. Ctrl/Shift selects multiple tracks for Add Selected or drag/drop.");
 
         working_panel_.Add(working_header_row_); working_panel_.Add(working_action_row_); working_panel_.Add(working_list_);
         working_header_row_.SetDirection(UiDirection::H).SetGap(DPI(6)).SetAlignItems(UiCrossAlign::Stretch);
@@ -676,14 +718,14 @@ private:
         working_header_row_.Add(destination_).Fit().MinWidth(DPI(132));
 
         working_action_row_.SetDirection(UiDirection::H).SetGap(DPI(6)).SetAlignItems(UiCrossAlign::Stretch);
-        working_action_row_.Add(find_).Expand(1).MinMaxWidth(DPI(150), DPI(280));
+        working_action_row_.Add(find_).Expand(1).MinMaxWidth(DPI(135), DPI(230));
         working_action_row_.AddSpacer(1);
         working_action_row_.Add(import_csv_).Fit();
         working_action_row_.Add(paste_text_).Fit();
         working_action_row_.Add(resolve_unmatched_).Fit();
         working_action_row_.Add(export_csv_).Fit();
-        working_action_row_.Add(remove_working_).Fixed(DPI(32));
-        working_action_row_.Add(clear_working_).Fixed(DPI(32));
+        working_action_row_.Add(remove_working_).Fixed(DPI(34));
+        working_action_row_.Add(clear_working_).Fixed(DPI(34));
 
         working_heading_.SetText("WORKING PLAYLIST");
         working_name_.SetPlaceholder("Working Playlist name");
@@ -706,8 +748,8 @@ private:
         import_csv_.Tip("Import a CSV directly into the local Working Playlist.");
         paste_text_.Tip("Paste a text song list directly into the local Working Playlist.");
         export_csv_.Tip("Export the current Working Playlist to CSV.");
-        remove_working_.SetIcon(ICON_CONTENT_OUTLINED_REMOVE_48()).SetIconSize(DPI(18), DPI(18));
-        clear_working_.SetIcon(ICON_DESIGN_DELETE_48()).SetIconSize(DPI(18), DPI(18));
+        remove_working_.SetIcon(ICON_CONTENT_OUTLINED_REMOVE_CIRCLE_OUTLINE_48()).SetIconSize(DPI(20), DPI(20));
+        clear_working_.SetIcon(ICON_ACTION_CANCEL_48()).SetIconSize(DPI(20), DPI(20));
         remove_working_.Tip("Remove selected Working rows. The Delete key performs the same action.");
         clear_working_.Tip("Clear all Working Playlist tracks while keeping its name. Spotify is not modified.");
         find_.Tip("Type a title, artist, or both and press Enter. Choose a Spotify result and it is added directly to Working.");
@@ -719,14 +761,14 @@ private:
         inspector_panel_.Add(review_match_); inspector_panel_.Add(notes_heading_); inspector_panel_.Add(notes_);
         inspector_panel_.Add(notice_);
         inspector_heading_.SetText("TRACK DETAILS");
-        inspector_title_.SetText("No Working track selected");
+        inspector_title_.SetText("No track selected");
         notes_heading_.SetText("Notes");
         play_spotify_.SetText("Open in Spotify");
-        play_spotify_.Tip("Open this track in Spotify. This does not control or replace the currently active Spotify player session.");
+        play_spotify_.Tip("Open the currently inspected track in Spotify. This does not control or replace the active Spotify player session.");
         review_match_.SetText("Review Match");
         review_match_.Hide();
         review_match_.Tip("Choose the correct Spotify candidate for an ambiguous Working row.");
-        notes_.Tip("PlaylistLab-owned notes. These are stored locally with Working and are never sent to Spotify.");
+        notes_.Tip("PlaylistLab-owned notes. Working notes are stored locally and are never sent to Spotify.");
 
         playlist_list_.SetModel(playlist_model_)
                       .SetItemRender(playlist_renderer_)
@@ -806,6 +848,7 @@ private:
         playlists.item_spacing = DPI(2);
         playlist_list_.SetCustomStyle(playlists);
 
+        bool dark = APP_MODE == UiThemeMode::Dark;
         UiList::Style source = UiTheme::ResolveList(APP_THEME, APP_MODE);
         source.row_height = DPI(48);
         source.show_checks = false;
@@ -813,9 +856,9 @@ private:
         source.show_metadata_marker = false;
         source.right_text_as_badge = false;
         source.row_state_frame_enabled = true;
-        source.selected_face = Color(28, 52, 78);
+        source.selected_face = dark ? Color(28, 52, 78) : Color(219, 235, 252);
         source.selected_frame = Color(65, 167, 248);
-        source.selected_ink = White();
+        source.selected_ink = dark ? White() : Color(17, 24, 39);
         target_track_list_.SetCustomStyle(source);
 
         UiList::Style working = source;
@@ -832,6 +875,10 @@ private:
 
     void ConnectEvents()
     {
+        header_help_.WhenAction = [=] { ShowPlaylistHelp(); };
+        header_theme_.WhenAction = [=] { ToggleTheme(); };
+        header_exit_.WhenAction = [=] { Close(); };
+
         profile_selector_.WhenSelect = [=](int) { OnProfileSelected(); };
         profile_add_.WhenAction = [=] { AddClientProfile(); };
         profile_edit_.WhenAction = [=] { EditClientProfile(); };
@@ -846,6 +893,7 @@ private:
         };
         open_spotify_.WhenAction = [=] { OpenTargetInSpotify(); };
         rename_spotify_.WhenAction = [=] { RenameSpotifyPlaylist(); };
+        target_track_list_.WhenSelection = [=] { SelectSpotifyInspectorTrack(); };
 
         working_name_.WhenAction = [=] { CommitWorkingName(); };
         find_.WhenAction = [=] { StartFindWorking(); };
@@ -863,7 +911,7 @@ private:
             RunDestinationAction(action);
         };
 
-        working_list_.WhenSelection = [=] { UpdateInspector(); };
+        working_list_.WhenSelection = [=] { SelectWorkingInspectorTrack(); };
         working_list_.WhenAction = [=] {
             int i = working_list_.GetCursor();
             if(i >= 0 && i < working_document_.tracks.GetCount() && working_document_.tracks[i].state == TRACK_REVIEW)
@@ -887,7 +935,7 @@ private:
         int margin = DPI(12), w = max(0, rc.GetWidth() - margin * 2), y = margin;
         library_heading_.SetRect(margin, y, w, DPI(26)); y += DPI(30);
         library_hint_.SetRect(margin, y, w, DPI(36)); y += DPI(42);
-        library_profile_row_.SetRect(margin, y, w, DPI(32)); y += DPI(40);
+        library_profile_row_.SetRect(margin, y, w, DPI(34)); y += DPI(42);
         playlist_list_.SetRect(margin, y, w, max(0, rc.GetHeight() - y - margin));
     }
 
@@ -895,8 +943,8 @@ private:
     {
         Rect rc = spotify_panel_.GetSize();
         int margin = DPI(12), w = max(0, rc.GetWidth() - margin * 2), y = margin;
-        spotify_header_row_.SetRect(margin, y, w, DPI(32)); y += DPI(36);
-        spotify_meta_.SetRect(margin, y, w, DPI(24)); y += DPI(28);
+        spotify_header_row_.SetRect(margin, y, w, DPI(30)); y += DPI(36);
+        spotify_meta_.SetRect(margin, y, w, DPI(22)); y += DPI(32);
         target_track_list_.SetRect(margin, y, w, max(0, rc.GetHeight() - y - margin));
     }
 
@@ -904,8 +952,8 @@ private:
     {
         Rect rc = working_panel_.GetSize();
         int margin = DPI(12), w = max(0, rc.GetWidth() - margin * 2), y = margin;
-        working_header_row_.SetRect(margin, y, w, DPI(32)); y += DPI(38);
-        working_action_row_.SetRect(margin, y, w, DPI(32)); y += DPI(40);
+        working_header_row_.SetRect(margin, y, w, DPI(30)); y += DPI(38);
+        working_action_row_.SetRect(margin, y, w, DPI(30)); y += DPI(44);
         working_list_.SetRect(margin, y, w, max(0, rc.GetHeight() - y - margin));
     }
 
@@ -1245,6 +1293,8 @@ private:
         }
         target_track_model_.Clear();
         if(!rows.IsEmpty()) target_track_model_.AddRange(rows);
+        if(inspector_source_ == INSPECTOR_SPOTIFY)
+            UpdateInspector();
         UpdateSummary();
     }
 
@@ -1273,46 +1323,112 @@ private:
         UpdateSummary();
     }
 
-    void UpdateInspector()
+    String FindWorkingNoteForUri(const String& uri) const
+    {
+        if(uri.IsEmpty())
+            return String();
+        for(const TrackEntry& entry : working_document_.tracks)
+            if(entry.ResolvedUri() == uri && !entry.user_note.IsEmpty())
+                return entry.user_note;
+        return String();
+    }
+
+    void SelectSpotifyInspectorTrack()
+    {
+        SaveInspectorNote();
+        int index = target_track_list_.GetCursor();
+        if(index < 0 || index >= target_tracks_.GetCount()) {
+            inspector_source_ = INSPECTOR_NONE;
+            inspector_spotify_index_ = -1;
+        }
+        else {
+            inspector_source_ = INSPECTOR_SPOTIFY;
+            inspector_spotify_index_ = index;
+            inspector_index_ = -1;
+        }
+        UpdateInspector();
+    }
+
+    void SelectWorkingInspectorTrack()
     {
         SaveInspectorNote();
         int index = working_list_.GetCursor();
-        inspector_index_ = index;
-        updating_inspector_ = true;
         if(index < 0 || index >= working_document_.tracks.GetCount()) {
-            inspector_art_.SetImage(Image());
-            inspector_title_.SetText("No Working track selected");
-            inspector_artist_.SetText(Null);
-            inspector_album_.SetText(Null);
-            inspector_time_.SetText(Null);
-            inspector_state_.SetText(Null);
-            notes_.SetTextUtf8(String());
+            inspector_source_ = INSPECTOR_NONE;
+            inspector_index_ = -1;
+        }
+        else {
+            inspector_source_ = INSPECTOR_WORKING;
+            inspector_index_ = index;
+            inspector_spotify_index_ = -1;
+        }
+        UpdateInspector();
+    }
+
+    void UpdateInspector()
+    {
+        updating_inspector_ = true;
+
+        if(inspector_source_ == INSPECTOR_SPOTIFY && inspector_spotify_index_ >= 0 && inspector_spotify_index_ < target_tracks_.GetCount()) {
+            const SpotifyTrack& track = target_tracks_[inspector_spotify_index_];
+            Image art = GetTrackArtwork(track);
+            if(!IsNull(art) && art.GetSize() != Size(DPI(108), DPI(108)))
+                art = Rescale(art, DPI(108), DPI(108));
+            inspector_art_.SetImage(art);
+            inspector_title_.SetText(track.title.IsEmpty() ? "Untitled Spotify item" : track.title);
+            inspector_artist_.SetText(track.artist.IsEmpty() ? "Artist: —" : "Artist: " + track.artist);
+            inspector_album_.SetText(track.album.IsEmpty() ? "Album: —" : "Album: " + track.album);
+            inspector_time_.SetText(track.duration_ms > 0 ? "Time: " + DurationText(track.duration_ms) : "Time: —");
+            inspector_state_.SetText(track.placeholder ? "Spotify source • unavailable playlist position" : "Spotify source • " + track.uri);
+            String stored_note = FindWorkingNoteForUri(track.uri);
+            notes_heading_.SetText(stored_note.IsEmpty() ? "Notes" : "Notes (from Working copy)");
+            notes_.SetTextUtf8(stored_note);
             updating_inspector_ = false;
             UpdateActionState();
             return;
         }
-        const TrackEntry& entry = working_document_.tracks[index];
-        const SpotifyTrack *track = ArtworkTrack(entry);
-        Image art = track ? GetTrackArtwork(*track) : Image();
-        if(!IsNull(art) && art.GetSize() != Size(DPI(108), DPI(108)))
-            art = Rescale(art, DPI(108), DPI(108));
-        inspector_art_.SetImage(art);
-        inspector_title_.SetText(TrackDisplayTitle(entry));
-        inspector_artist_.SetText(entry.ResolvedArtist().IsEmpty() ? "Artist: —" : "Artist: " + entry.ResolvedArtist());
-        String album = track ? track->album : entry.requested_album;
-        inspector_album_.SetText(album.IsEmpty() ? "Album: —" : "Album: " + album);
-        inspector_time_.SetText(track && track->duration_ms > 0 ? "Time: " + DurationText(track->duration_ms) : "Time: —");
-        String state = "Match: " + TrackMatchStateText(entry.state);
-        if(!entry.note.IsEmpty()) state << "  •  " << entry.note;
-        inspector_state_.SetText(state);
-        notes_.SetTextUtf8(entry.user_note);
+
+        if(inspector_source_ == INSPECTOR_WORKING && inspector_index_ >= 0 && inspector_index_ < working_document_.tracks.GetCount()) {
+            const TrackEntry& entry = working_document_.tracks[inspector_index_];
+            const SpotifyTrack *track = ArtworkTrack(entry);
+            Image art = track ? GetTrackArtwork(*track) : Image();
+            if(!IsNull(art) && art.GetSize() != Size(DPI(108), DPI(108)))
+                art = Rescale(art, DPI(108), DPI(108));
+            inspector_art_.SetImage(art);
+            inspector_title_.SetText(TrackDisplayTitle(entry));
+            inspector_artist_.SetText(entry.ResolvedArtist().IsEmpty() ? "Artist: —" : "Artist: " + entry.ResolvedArtist());
+            String album = track ? track->album : entry.requested_album;
+            inspector_album_.SetText(album.IsEmpty() ? "Album: —" : "Album: " + album);
+            inspector_time_.SetText(track && track->duration_ms > 0 ? "Time: " + DurationText(track->duration_ms) : "Time: —");
+            String state = "Match: " + TrackMatchStateText(entry.state);
+            if(!entry.note.IsEmpty()) state << "  •  " << entry.note;
+            inspector_state_.SetText(state);
+            notes_heading_.SetText("Notes");
+            notes_.SetTextUtf8(entry.user_note);
+            updating_inspector_ = false;
+            UpdateActionState();
+            return;
+        }
+
+        inspector_source_ = INSPECTOR_NONE;
+        inspector_index_ = -1;
+        inspector_spotify_index_ = -1;
+        inspector_art_.SetImage(Image());
+        inspector_title_.SetText("No track selected");
+        inspector_artist_.SetText(Null);
+        inspector_album_.SetText(Null);
+        inspector_time_.SetText(Null);
+        inspector_state_.SetText(Null);
+        notes_heading_.SetText("Notes");
+        notes_.SetTextUtf8(String());
         updating_inspector_ = false;
         UpdateActionState();
     }
 
     void SaveInspectorNote()
     {
-        if(updating_inspector_ || inspector_index_ < 0 || inspector_index_ >= working_document_.tracks.GetCount())
+        if(updating_inspector_ || inspector_source_ != INSPECTOR_WORKING ||
+           inspector_index_ < 0 || inspector_index_ >= working_document_.tracks.GetCount())
             return;
         String note = notes_.GetTextUtf8();
         if(working_document_.tracks[inspector_index_].user_note == note)
@@ -1320,6 +1436,15 @@ private:
         working_document_.tracks[inspector_index_].user_note = note;
         working_document_.dirty = true;
         SaveWorkingState();
+    }
+
+    const SpotifyTrack *GetInspectedSpotifyTrack() const
+    {
+        if(inspector_source_ == INSPECTOR_SPOTIFY && inspector_spotify_index_ >= 0 && inspector_spotify_index_ < target_tracks_.GetCount())
+            return &target_tracks_[inspector_spotify_index_];
+        if(inspector_source_ == INSPECTOR_WORKING && inspector_index_ >= 0 && inspector_index_ < working_document_.tracks.GetCount())
+            return ArtworkTrack(working_document_.tracks[inspector_index_]);
+        return nullptr;
     }
 
     void UpdateSummary()
@@ -1361,9 +1486,10 @@ private:
         bool has_profile = HasActiveProfile();
         bool source_ready = idle && target_loaded_ && !target_tracks_.IsEmpty();
         bool editable_target = idle && target_loaded_ && target_editable_ && !target_snapshot_id_.IsEmpty();
-        int wi = working_list_.GetCursor();
-        const TrackEntry *entry = wi >= 0 && wi < working_document_.tracks.GetCount() ? &working_document_.tracks[wi] : nullptr;
+        const TrackEntry *entry = inspector_source_ == INSPECTOR_WORKING && inspector_index_ >= 0 && inspector_index_ < working_document_.tracks.GetCount()
+                                ? &working_document_.tracks[inspector_index_] : nullptr;
         bool reviewable = idle && entry && entry->state == TRACK_REVIEW && !entry->candidates.IsEmpty();
+        const SpotifyTrack *inspected_track = GetInspectedSpotifyTrack();
 
         profile_selector_.Enable(idle && !client_profiles_.IsEmpty());
         profile_add_.Enable(idle);
@@ -1390,10 +1516,10 @@ private:
             destination_.SetItemEnabled(1, editable_target && !working_document_.tracks.IsEmpty());
             destination_.SetItemEnabled(2, editable_target && !working_document_.tracks.IsEmpty());
         }
-        play_spotify_.Enable(idle && entry && ArtworkTrack(*entry) && !ArtworkTrack(*entry)->spotify_url.IsEmpty());
+        play_spotify_.Enable(idle && inspected_track && !inspected_track->spotify_url.IsEmpty());
         review_match_.Show(reviewable);
         review_match_.Enable(reviewable);
-        notes_.Enable(idle && entry);
+        notes_.Enable(idle && inspector_source_ == INSPECTOR_WORKING && entry);
         LayoutInspector();
     }
 
@@ -1565,6 +1691,10 @@ private:
         target_playlist_id_.Clear(); target_playlist_name_.Clear(); target_snapshot_id_.Clear(); target_spotify_url_.Clear();
         target_editable_ = false; target_items_accessible_ = false; target_loaded_ = false;
         target_tracks_.Clear(); target_uris_.Clear();
+        if(inspector_source_ == INSPECTOR_SPOTIFY) {
+            inspector_source_ = INSPECTOR_NONE;
+            inspector_spotify_index_ = -1;
+        }
     }
 
     void StartLoadTarget(int playlist_index)
@@ -1577,6 +1707,10 @@ private:
         target_editable_ = playlist.editable;
         target_items_accessible_ = !playlist.items_access_checked || playlist.items_accessible;
         target_snapshot_id_.Clear(); target_loaded_ = false; target_tracks_.Clear(); target_uris_.Clear();
+        if(inspector_source_ == INSPECTOR_SPOTIFY) {
+            inspector_source_ = INSPECTOR_NONE;
+            inspector_spotify_index_ = -1;
+        }
         last_playlist_id_ = target_playlist_id_;
         SaveUiState();
         RefreshTargetProjection();
@@ -1883,6 +2017,8 @@ private:
         Swap(*pending_working_resolution_, copy);
         PlaylistDocument *job = ~pending_working_resolution_;
         inspector_index_ = -1;
+        if(inspector_source_ == INSPECTOR_WORKING)
+            inspector_source_ = INSPECTOR_NONE;
         SetSpotifyBusy(true, "Resolving unmatched Working tracks against Spotify…");
         if(!spotify_worker_.Run([=] {
             String error;
@@ -1946,6 +2082,8 @@ private:
         working_document_.dirty = true;
         SaveWorkingState();
         last_notice_ = "Spotify candidate confirmed locally.";
+        inspector_source_ = INSPECTOR_WORKING;
+        inspector_index_ = index;
         RefreshWorkingProjection(index);
         StartTrackArtworkCache();
     }
@@ -1960,6 +2098,8 @@ private:
         working_document_.dirty = true;
         if(working_document_.tracks.IsEmpty()) working_source_.Clear();
         inspector_index_ = -1;
+        if(inspector_source_ == INSPECTOR_WORKING)
+            inspector_source_ = INSPECTOR_NONE;
         SaveWorkingState();
         last_notice_ = Format("Removed %d Working track%s.", rows.GetCount(), rows.GetCount() == 1 ? "" : "s");
         RefreshWorkingProjection();
@@ -1976,6 +2116,8 @@ private:
         working_document_.dirty = true;
         working_source_.Clear();
         inspector_index_ = -1;
+        if(inspector_source_ == INSPECTOR_WORKING)
+            inspector_source_ = INSPECTOR_NONE;
         SaveWorkingState();
         RefreshWorkingName();
         last_notice_ = "Working Playlist tracks cleared; its name was kept. Spotify was not modified.";
@@ -2002,12 +2144,16 @@ private:
         if(spotify_busy_) { request.accept = false; return; }
         SaveInspectorNote();
         inspector_index_ = -1;
+        if(inspector_source_ == INSPECTOR_WORKING)
+            inspector_source_ = INSPECTOR_NONE;
         int target = request.before;
         if(!working_document_.MoveTrack(request.from, request.before)) { request.accept = false; return; }
         request.handled = true;
         if(target > request.from) target--;
         SaveWorkingState();
         last_notice_ = "Working Playlist reordered locally.";
+        inspector_source_ = INSPECTOR_WORKING;
+        inspector_index_ = target;
         RefreshWorkingProjection(target);
     }
 
@@ -2294,9 +2440,7 @@ private:
 
     void OpenSelectedTrackInSpotify()
     {
-        int i = working_list_.GetCursor();
-        if(i < 0 || i >= working_document_.tracks.GetCount()) return;
-        const SpotifyTrack *track = ArtworkTrack(working_document_.tracks[i]);
+        const SpotifyTrack *track = GetInspectedSpotifyTrack();
         if(track && !track->spotify_url.IsEmpty())
             LaunchWebBrowser(track->spotify_url);
     }
@@ -2311,7 +2455,9 @@ private:
     bool rebuilding_profiles_ = false;
     bool updating_working_name_ = false;
     bool updating_inspector_ = false;
+    InspectorSource inspector_source_ = INSPECTOR_NONE;
     int inspector_index_ = -1;
+    int inspector_spotify_index_ = -1;
     int transfer_action_ = TRANSFER_SELECTED;
     int destination_action_ = DEST_CREATE;
 
@@ -2353,6 +2499,8 @@ private:
     int pending_create_added_ = 0;
 
     UiTitleCard header_;
+    UiBoxLayout header_actions_{UiDirection::H};
+    UiToolButton header_help_, header_theme_, header_exit_;
     UiPanel library_panel_, spotify_panel_, working_panel_, inspector_panel_;
     UiBoxLayout library_profile_row_{UiDirection::H};
     UiBoxLayout spotify_header_row_{UiDirection::H};
