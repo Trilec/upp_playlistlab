@@ -40,7 +40,8 @@ struct TrackEntry : Moveable<TrackEntry> {
     int             selected_candidate = -1;
     TrackMatchState state = TRACK_UNRESOLVED;
     int             confidence = 0;
-    String          note;
+    String          note;       // matching / resolver evidence
+    String          user_note;  // PlaylistLab-owned annotation, never sent to Spotify
 
     bool IsResolved() const;
     const SpotifyTrack *GetResolved() const;
