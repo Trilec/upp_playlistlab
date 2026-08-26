@@ -133,11 +133,15 @@ The previous accepted run was **88 checks** at the historical checkpoint above. 
 
 ## UI DEPENDENCY
 
-Expected exact `upp_Ui/main` dependency for compile validation:
+Current remote `Trilec/upp_Ui/main` for compile validation:
+
+`675bee40345e764acf8f06bc06c3d91fb050ddaa`
+
+The previously accepted PlaylistLab Ui baseline was:
 
 `91f2926f57a86dfc6df08d9b0ae10173085dcbf5`
 
-This is the previously accepted UiList/Ui item-render baseline used by PlaylistLab.
+Current `upp_Ui/main` is nine commits ahead and zero behind that baseline. The intervening diff is confined to `Ui/UiGraph/UiNodeGraph*` plus UiNodeGraph test packages; it does not touch the UiList, UiSplitButton, UiMultiEdit, UiLabel, UiButton, item-render, or theme APIs used by this PlaylistLab slice. Compile validation should therefore use current remote `upp_Ui/main` rather than silently pinning the stale local dependency.
 
 ## VALIDATION BOUNDARY
 
@@ -168,7 +172,7 @@ The final executable for Curt must be directly at:
 Windows compile/test agent:
 
 1. refresh exact current `origin/main` and report SHA;
-2. verify `upp_Ui` dependency SHA;
+2. refresh `Trilec/upp_Ui/main` to `675bee40345e764acf8f06bc06c3d91fb050ddaa` and confirm a clean dependency worktree;
 3. run `PlaylistCoreTest` and report exact check/failure count;
 4. build PlaylistLab CLANGx64 `GUI MT` with final output at `build\PlaylistLab.exe`;
 5. run `git diff --check` and confirm clean worktree / no unrelated files;
