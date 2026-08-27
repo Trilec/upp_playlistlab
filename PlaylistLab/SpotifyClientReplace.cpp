@@ -62,6 +62,8 @@ bool SpotifyClient::ExecuteReplaceItems(const String& playlist_id,
         }
     }
 
+    // Replace is deliberately boring about races. If the target is no longer
+    // the playlist the user previewed, stop before the destructive request.
     Vector<SpotifyTrack> current_tracks;
     String current_snapshot;
     if(!GetPlaylistItems(playlist_id, current_tracks, &current_snapshot)) {
@@ -90,6 +92,8 @@ bool SpotifyClient::ExecuteReplaceItems(const String& playlist_id,
     }
 
     auto recover_observed_state = [&](const String& saved_error, int saved_status) {
+        // Mutation failures are ambiguous until the remote state is observed.
+        // The network can lose the receipt after Spotify has already done the job.
         Vector<SpotifyTrack> observed;
         String snapshot;
         if(GetPlaylistItems(playlist_id, observed, &snapshot)) {
