@@ -46,6 +46,9 @@ bool SpotifyClient::ExecuteAppendMissing(const String& playlist_id,
         }
     }
 
+    // The preview is a promise about a particular remote playlist state, not a
+    // suggestion. Re-read immediately before writing and refuse to improvise if
+    // Spotify has moved on since the user saw that preview.
     Vector<SpotifyTrack> current_tracks;
     String current_snapshot;
     if(!GetPlaylistItems(playlist_id, current_tracks, &current_snapshot)) {
@@ -81,6 +84,8 @@ bool SpotifyClient::ExecuteAppendMissing(const String& playlist_id,
     if(!AddItems(playlist_id, result.planned_add_uris, &working_snapshot, &result.added_count)) {
         String saved_error = last_error;
         int saved_status = last_status;
+        // Once a mutation request has left the building, an error response does
+        // not prove that Spotify changed nothing. Read back what actually exists.
         result.partial = true;
 
         Vector<SpotifyTrack> observed;
