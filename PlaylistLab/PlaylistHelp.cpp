@@ -86,6 +86,9 @@ public:
         body_.Tip("PlaylistLab setup and usage guide. Use the buttons below to open Spotify's official pages.");
 
         button_row_.SetDirection(UiDirection::H).SetGap(DPI(6)).SetAlignItems(UiCrossAlign::Stretch);
+        // These are escape hatches, not a second navigation system. Label them so
+        // a first-time setup does not have to infer why five buttons suddenly appeared.
+        button_row_.Add(links_label_).Fit();
         button_row_.Add(dashboard_).Fit();
         button_row_.Add(account_apps_).Fit();
         button_row_.Add(api_changes_).Fit();
@@ -93,6 +96,7 @@ public:
         button_row_.AddSpacer(1);
         button_row_.Add(close_).Fit();
 
+        links_label_.SetText("Helpful links");
         dashboard_.SetText("Developer Dashboard").Tip("Open Spotify Developer Dashboard. Sign in to Spotify in the browser first.");
         account_apps_.SetText("Account Apps").Tip("Open Spotify's connected-apps account page. This is not the page that shows the Developer Client ID.");
         api_changes_.SetText("2026 API Changes").Tip("Open Spotify's February 2026 Web API change log.");
@@ -161,6 +165,7 @@ private:
         UiThemeMode mode = UiTheme::GetContext().mode;
         bool dark = mode == UiThemeMode::Dark;
         title_.SetCustomStyle(UiTheme::ResolveTitleCard(UiThemePreset::Minimal, mode));
+        links_label_.SetCustomStyle(UiTheme::ResolveLabel(UiThemePreset::Minimal, mode, UiLabelRole::Caption));
 
         UiDoc::Style doc = UiDoc::StyleDefault();
         Color page = dark ? Color(24, 24, 24) : White();
@@ -195,6 +200,7 @@ private:
     UiTitleCard title_;
     UiDoc body_;
     UiBoxLayout button_row_{UiDirection::H};
+    UiLabel links_label_;
     UiButton dashboard_, account_apps_, api_changes_, copy_redirect_, close_;
 };
 
