@@ -9,6 +9,7 @@
 #include "SpotifyImageCache.h"
 #include "PlaylistTransferList.h"
 #include "PlaylistHelp.h"
+#include "PlaylistAppIdentity.h"
 
 using namespace Upp;
 
@@ -485,7 +486,7 @@ public:
         : spotify_client_(spotify_auth_)
     {
         Title("PlaylistLab");
-        Icon(ICON_DESIGN_WIDGETS_48());
+        Icon(PlaylistLabAppIcon());
         Sizeable().Zoomable();
         SetRect(0, 0, DPI(1380), DPI(900));
         SetMinSize(Size(DPI(1060), DPI(720)));
@@ -703,6 +704,12 @@ private:
         Add(header_); Add(library_panel_); Add(spotify_panel_); Add(working_panel_); Add(inspector_panel_);
         header_.SetTitle("PlaylistLab")
                .SetSubTitle("Spotify Playlist  →  Working Playlist  →  Spotify")
+               .SetMedia(PlaylistLabAppIcon(), Size(DPI(38), DPI(38)))
+               .SetMediaSide(UiAlign::LEFT)
+               .SetMediaAlign(UiAlign::CENTER, UiAlign::CENTER)
+               .SetMediaAutoFit(true)
+               .SetMediaReserve(DPI(42))
+               .SetMediaGap(DPI(8))
                .ShowTitleLine(false)
                .SetContentInset(DPI(8))
                .SetContentCell(header_actions_);
