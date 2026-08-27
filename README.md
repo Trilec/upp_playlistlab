@@ -40,7 +40,7 @@ The short version is:
 5. Copy the app's **Client ID** from its Basic Information page.
 6. Add that Client ID as a friendly named profile in PlaylistLab and authorize when prompted.
 
-The Client ID itself does not expire. Spotify's current user refresh tokens have a roughly six-month / 180-day lifetime, so periodic browser reauthorization is expected.
+The Client ID itself does not expire?. Spotify's current user refresh tokens have a roughly six-month / 180-day lifetime, so periodic browser reauthorization is expected.
 
 ## Repository layout
 
