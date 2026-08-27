@@ -2612,6 +2612,16 @@ private:
 
 GUI_APP_MAIN
 {
+    // Program Files is intentionally not writable for standard users. Keep
+    // PlaylistLab's profiles, auth state, working document and artwork in the
+    // per-user local application-data area instead of beside the executable.
+#ifdef PLATFORM_WIN32
+    String local_app_data = GetEnv("LOCALAPPDATA");
+    if(!local_app_data.IsEmpty())
+        SetHomeDirectory(local_app_data);
+    UseHomeDirectoryConfig(true);
+#endif
+
     ApplyHostSkin();
     UiThemeContext theme;
     theme.preset = APP_THEME;

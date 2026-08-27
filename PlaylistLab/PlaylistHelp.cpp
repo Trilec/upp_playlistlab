@@ -26,11 +26,21 @@ String HelpText()
         << "1. First sign in to Spotify in your normal web browser. If you are not signed in, the developer pages may not show your apps correctly.\n"
         << "2. Open the Spotify Developer Dashboard using the button below.\n"
         << "3. Choose Create app, or open the PlaylistLab app you already created.\n"
-        << "4. Give it a useful name such as PlaylistLab.\n"
-        << "5. In the app settings, register the redirect URI shown above exactly.\n"
-        << "6. Open the app's Basic Information page and copy its Client ID.\n"
-        << "7. Back in PlaylistLab, press + beside the Client profile selector. Give the profile a friendly name and paste the Client ID.\n"
-        << "8. Press Refresh/Authorize. Spotify will open a browser authorization page when required.\n\n"
+        << "4. Enter the copy-ready settings below.\n"
+        << "5. Save the app, open its Basic Information page and copy the Client ID.\n"
+        << "6. Back in PlaylistLab, press + beside the Client profile selector. Give the profile a friendly name and paste the Client ID.\n"
+        << "7. Press Refresh/Authorize. Spotify will open a browser authorization page when required.\n\n"
+        << "COPY-READY APP SETTINGS\n"
+        << "App name: PlaylistLab\n"
+        << "App description: Local PlaylistLab tool for importing, reviewing and publishing Spotify playlists.\n"
+        << "Website: http://127.0.0.1:43821\n"
+        << "Redirect URI: " << PLAYLISTLAB_REDIRECT_URI << "\n"
+        << "API/SDK: Web API\n"
+        << "Android package name: leave blank.\n"
+        << "iOS Bundle ID: leave blank.\n"
+        << "Web Playback SDK: leave unselected.\n"
+        << "Ads API: leave unselected.\n"
+        << "PlaylistLab does not require a Client Secret.\n\n"
         << "The Spotify Account Apps page is useful for reviewing apps connected to your Spotify account, but it is not where the Developer Client ID is shown. The Client ID comes from the Spotify Developer Dashboard.\n\n"
         << "AUTHORIZATION LIFETIME\n"
         << "The Client ID itself does not expire. Spotify now gives user refresh tokens a six-month lifetime (about 180 days). Refreshing an access token does not extend that six-month period. When the refresh token expires, PlaylistLab must send you through Spotify authorization again. Your app and Client ID remain the same.\n\n"
@@ -46,6 +56,10 @@ String HelpText()
         << "Open in Spotify — opens the selected track or playlist in Spotify. It is navigation, not playback control. PlaylistLab can add true Spotify playback control separately; that requires Spotify's player-control permission and a Premium playback device.\n\n"
         << "TRACK DETAILS AND NOTES\n"
         << "Selecting a track in either Selected Spotify Playlist or Working Playlist updates Track Details. Working-track notes are local PlaylistLab metadata and are never sent to Spotify. If a Spotify source track already has a matching Working copy with a local note, PlaylistLab can show that note while you inspect the Spotify track.\n\n"
+        << "LOCAL DATA AND RESET\n"
+        << "PlaylistLab stores Client ID profiles, Spotify authorization state, the Working Playlist, UI state and cached artwork in the local user-data folder:\n"
+        << "%LOCALAPPDATA%\\PlaylistLab\\\n\n"
+        << "This is separate from the installed program. To remove PlaylistLab's saved account and local playlist data, close PlaylistLab and delete that folder.\n\n"
         << "TROUBLESHOOTING\n"
         << "I cannot find the Client ID — make sure you are signed in to Spotify in the browser, then open the Developer Dashboard and open the specific app. The normal Account Apps page does not expose the Developer Client ID.\n\n"
         << "Spotify asks me to authorize again — that is expected after the six-month refresh-token lifetime, or if Spotify revoked/invalidated the authorization. Re-authorize; do not create a new Client ID just because the token expired.\n\n"
@@ -145,6 +159,16 @@ private:
         body_.SetBlockRole(role);
     }
 
+    void ApplyBold(const String& label)
+    {
+        String text = body_.GetText();
+        int at = text.Find(label);
+        if(at < 0)
+            return;
+        body_.SetSelection(UiDocRange(at, at + label.GetCount()));
+        body_.SetBold(true);
+    }
+
     void LoadHelpDocument()
     {
         body_.NewDocument();
@@ -152,11 +176,22 @@ private:
         ApplyHeading("SPOTIFY SETUP", "heading.1");
         ApplyHeading("WHAT YOU NEED", "heading.2");
         ApplyHeading("HOW TO GET YOUR CLIENT ID", "heading.2");
+        ApplyHeading("COPY-READY APP SETTINGS", "heading.2");
         ApplyHeading("AUTHORIZATION LIFETIME", "heading.2");
         ApplyHeading("SPOTIFY'S 2026 DEVELOPMENT-MODE CHANGES", "heading.2");
         ApplyHeading("PLAYLISTLAB BASICS", "heading.2");
         ApplyHeading("TRACK DETAILS AND NOTES", "heading.2");
+        ApplyHeading("LOCAL DATA AND RESET", "heading.2");
         ApplyHeading("TROUBLESHOOTING", "heading.2");
+        ApplyBold("App name:");
+        ApplyBold("App description:");
+        ApplyBold("Website:");
+        ApplyBold("Redirect URI:");
+        ApplyBold("API/SDK:");
+        ApplyBold("Android package name:");
+        ApplyBold("iOS Bundle ID:");
+        ApplyBold("Web Playback SDK:");
+        ApplyBold("Ads API:");
         body_.SetSelection(UiDocRange(0, 0));
     }
 

@@ -33,7 +33,7 @@ The **Client ID itself does not expire**.
 
 Spotify now gives user refresh tokens a **six-month lifetime (about 180 days)**. Refreshing an access token does not extend that six-month lifetime. When the refresh token expires (or is revoked), PlaylistLab requires normal browser authorization again; the existing app and Client ID can continue to be used.
 
-PlaylistLab stores the selected Client ID profile and refresh token in its normal U++ config state. The access token is kept only in memory. If Spotify rejects a refresh token with `invalid_grant`, PlaylistLab clears it and requires authorization again rather than repeatedly retrying the expired/revoked credential.
+PlaylistLab stores the selected Client ID profile and refresh token in `%LOCALAPPDATA%\PlaylistLab\`. The access token is kept only in memory. The same folder also contains the local Working Playlist, UI state and cached artwork. To remove PlaylistLab's saved account and local playlist data, close the application and delete that folder. If Spotify rejects a refresh token with `invalid_grant`, PlaylistLab clears it and requires authorization again rather than repeatedly retrying the expired/revoked credential.
 
 ## Current API contract
 
