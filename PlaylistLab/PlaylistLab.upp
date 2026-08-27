@@ -28,7 +28,9 @@ file
 	PlaylistTransferList.h,
 	PlaylistHelp.h,
 	PlaylistHelp.cpp,
-	PlaylistWorkspace.cpp;
+	PlaylistWorkspace.cpp,
+	PlaylistResources.brc
+		depends() PlaylistWorkspace.cpp;
 
 mainconfig
 	"" = "GUI MT";
