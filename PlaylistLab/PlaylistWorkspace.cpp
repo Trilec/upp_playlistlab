@@ -39,6 +39,16 @@ Color AppBackground()
     return APP_MODE == UiThemeMode::Dark ? Color(18, 18, 18) : Color(247, 248, 250);
 }
 
+// Ui controls carry their own theme, while native CtrlLib pieces (notably the
+// UiDoc scrollbar) follow Chameleon. Keep both worlds in the same decade.
+void ApplyHostSkin()
+{
+    if(APP_MODE == UiThemeMode::Dark)
+        ChDarkSkin();
+    else
+        ChStdSkin();
+}
+
 String ValueString(const ValueMap& map, const char *key)
 {
     Value v = map[key];
@@ -216,7 +226,8 @@ class UiChoiceDialog : public TopWindow {
 public:
     typedef UiChoiceDialog CLASSNAME;
 
-    UiChoiceDialog(const String& title, const Vector<UiModelItem>& rows)
+    UiChoiceDialog(const String& title, const Vector<UiModelItem>& rows,
+                   bool multi = false, const String& action_text = "Select")
     {
         Title(title);
         Sizeable().Zoomable();
@@ -226,6 +237,7 @@ public:
         Add(cancel_);
 
         list_.SetModel(model_)
+             .SetSelectionMode(multi ? UILISTSEL_MULTI : UILISTSEL_SINGLE)
              .EnableRenameOnDblClick(false)
              .EnableDragReorder(false)
              .ShowDragHandle(false);
@@ -239,12 +251,18 @@ public:
         list_style.right_text_as_badge = false;
         list_.SetCustomStyle(list_style);
 
-        ok_.SetText("Select");
+        ok_.SetText(action_text);
         cancel_.SetText("Cancel");
         ok_.SetCustomStyle(UiTheme::ResolveButton(APP_THEME, APP_MODE, UiButtonRole::Accent));
         cancel_.SetCustomStyle(UiTheme::ResolveButton(APP_THEME, APP_MODE, UiButtonRole::Subtle));
         ok_.WhenAction = [=] {
-            if(list_.GetCursor() >= 0)
+            if(list_.GetSelectionCount() > 0 || list_.GetCursor() >= 0)
+                AcceptBreak(IDOK);
+        };
+        // A result list should reward a double-click, not make the user visit a
+        // confirmation button simply because the mouse happened to be nearby.
+        list_.WhenAction = [=] {
+            if(list_.GetSelectionCount() > 0 || list_.GetCursor() >= 0)
                 AcceptBreak(IDOK);
         };
         cancel_.WhenAction = [=] { RejectBreak(IDCANCEL); };
@@ -255,18 +273,31 @@ public:
     virtual void Layout() override
     {
         Rect rc = GetSize();
-        int margin = DPI(14), gap = DPI(8), button_h = DPI(34), button_w = DPI(96);
+        int margin = DPI(14), gap = DPI(8), button_h = DPI(34), button_w = DPI(110);
         int y = max(margin, rc.GetHeight() - margin - button_h);
         list_.SetRect(margin, margin, max(0, rc.GetWidth() - margin * 2), max(0, y - margin - gap));
         cancel_.SetRect(max(margin, rc.GetWidth() - margin - button_w), y, button_w, button_h);
         ok_.SetRect(max(margin, rc.GetWidth() - margin - button_w * 2 - gap), y, button_w, button_h);
     }
 
-    int Choose(int initial = 0)
+    Vector<int> ChooseMany(int initial = 0)
     {
+        Vector<int> selected;
         if(model_.GetCount() > 0)
             list_.SetCursor(minmax(initial, 0, model_.GetCount() - 1));
-        return ExecuteOK() ? list_.GetCursor() : -1;
+        if(!ExecuteOK())
+            return selected;
+        selected = list_.GetSelection();
+        if(selected.IsEmpty() && list_.GetCursor() >= 0)
+            selected.Add(list_.GetCursor());
+        Sort(selected);
+        return selected;
+    }
+
+    int Choose(int initial = 0)
+    {
+        Vector<int> selected = ChooseMany(initial);
+        return selected.IsEmpty() ? -1 : selected[0];
     }
 
 private:
@@ -340,7 +371,6 @@ private:
 class PreviewDialog : public TopWindow {
 public:
     typedef PreviewDialog CLASSNAME;
-    enum { PULSE_ID = 7301 };
 
     PreviewDialog(const String& title,
                   const String& context,
@@ -384,10 +414,13 @@ public:
         style.right_text_as_badge = true;
         style.badge_radius = DPI(8);
         list_.SetCustomStyle(style);
-        SetTimeCallback(650, THISBACK(Pulse), PULSE_ID);
+
+        // Ctrl-local timers already key themselves by this control. An arbitrary
+        // numeric ID is not an application handle here; U++ quite firmly checks.
+        SetTimeCallback(650, THISBACK(Pulse));
     }
 
-    ~PreviewDialog() { KillTimeCallback(PULSE_ID); }
+    ~PreviewDialog() { KillTimeCallback(); }
 
     virtual void Paint(Draw& w) override { w.DrawRect(GetSize(), AppBackground()); }
 
@@ -434,7 +467,7 @@ private:
     {
         pulse_ = !pulse_;
         ApplyConfirmStyle();
-        SetTimeCallback(650, THISBACK(Pulse), PULSE_ID);
+        SetTimeCallback(650, THISBACK(Pulse));
     }
 
     bool pulse_ = false;
@@ -452,6 +485,7 @@ public:
         : spotify_client_(spotify_auth_)
     {
         Title("PlaylistLab");
+        Icon(ICON_DESIGN_WIDGETS_48());
         Sizeable().Zoomable();
         SetRect(0, 0, DPI(1380), DPI(900));
         SetMinSize(Size(DPI(1060), DPI(720)));
@@ -653,6 +687,7 @@ private:
     void ToggleTheme()
     {
         APP_MODE = APP_MODE == UiThemeMode::Dark ? UiThemeMode::Light : UiThemeMode::Dark;
+        ApplyHostSkin();
         UiThemeContext theme = UiTheme::GetContext();
         theme.preset = APP_THEME;
         theme.mode = APP_MODE;
@@ -766,7 +801,7 @@ private:
         clear_working_.SetIcon(ICON_ACTION_CANCEL_48()).SetIconSize(DPI(20), DPI(20));
         remove_working_.Tip("Remove selected Working rows. The Delete key performs the same action.");
         clear_working_.Tip("Clear all Working Playlist tracks while keeping its name. Spotify is not modified.");
-        find_.Tip("Type a title, artist, or both and press Enter. Choose a Spotify result and it is added directly to Working.");
+        find_.Tip("Type a title, artist, or both and press Enter. Ctrl/Shift can select several results; double-click accepts the current selection.");
 
         inspector_panel_.Add(inspector_heading_); inspector_panel_.Add(inspector_art_);
         inspector_panel_.Add(inspector_title_); inspector_panel_.Add(inspector_artist_);
@@ -1172,6 +1207,8 @@ private:
         int duplicates = CountIncomingDuplicateUris(incoming);
         if(duplicates <= 0)
             return true;
+        // Repeated tracks can be intentional; the useful policy is to ask once,
+        // not to quietly become the playlist police.
         String question = Format("%d incoming track occurrence%s would duplicate a Spotify track already in Working (or another item in this add).\n\nKeep the duplicate occurrence%s?",
                                  duplicates, duplicates == 1 ? "" : "s", duplicates == 1 ? "" : "s");
         return PromptYesNo(question);
@@ -1496,11 +1533,12 @@ private:
 
     void UpdateActionState()
     {
+        int working_count = working_document_.tracks.GetCount();
         bool idle = !spotify_busy_;
         bool has_profile = HasActiveProfile();
         bool source_ready = idle && target_loaded_ && !target_tracks_.IsEmpty();
         bool editable_target = idle && target_loaded_ && target_editable_ && !target_snapshot_id_.IsEmpty();
-        const TrackEntry *entry = inspector_source_ == INSPECTOR_WORKING && inspector_index_ >= 0 && inspector_index_ < working_document_.tracks.GetCount()
+        const TrackEntry *entry = inspector_source_ == INSPECTOR_WORKING && inspector_index_ >= 0 && inspector_index_ < working_count
                                 ? &working_document_.tracks[inspector_index_] : nullptr;
         bool reviewable = idle && entry && entry->state == TRACK_REVIEW && !entry->candidates.IsEmpty();
         const SpotifyTrack *inspected_track = GetInspectedSpotifyTrack();
@@ -1519,16 +1557,16 @@ private:
         find_.Enable(idle && has_profile);
         import_csv_.Enable(idle);
         paste_text_.Enable(idle);
-        resolve_unmatched_.Enable(idle && has_profile && !working_document_.tracks.IsEmpty() && working_document_.GetResolvedCount() < working_document_.tracks.GetCount());
-        export_csv_.Enable(idle && !working_document_.tracks.IsEmpty());
+        resolve_unmatched_.Enable(idle && has_profile && working_count > 0 && working_document_.GetResolvedCount() < working_count);
+        export_csv_.Enable(idle && working_count > 0);
         remove_working_.Enable(idle && working_list_.GetSelectionCount() > 0);
-        clear_working_.Enable(idle && !working_document_.tracks.IsEmpty());
+        clear_working_.Enable(idle && working_count > 0);
         working_list_.Enable(idle);
-        destination_.Enable(idle && has_profile && !working_document_.tracks.IsEmpty());
+        destination_.Enable(idle && has_profile && working_count > 0);
         if(destination_.GetCount() >= 3) {
-            destination_.SetItemEnabled(0, idle && has_profile && !working_document_.tracks.IsEmpty());
-            destination_.SetItemEnabled(1, editable_target && !working_document_.tracks.IsEmpty());
-            destination_.SetItemEnabled(2, editable_target && !working_document_.tracks.IsEmpty());
+            destination_.SetItemEnabled(0, idle && has_profile && working_count > 0);
+            destination_.SetItemEnabled(1, editable_target && working_count > 0);
+            destination_.SetItemEnabled(2, editable_target && working_count > 0);
         }
         play_spotify_.Enable(idle && inspected_track && !inspected_track->spotify_url.IsEmpty());
         review_match_.Show(reviewable);
@@ -2000,23 +2038,35 @@ private:
             row.data = i;
             row.image = GetTrackArtwork(track);
         }
-        UiChoiceDialog dialog("Add Spotify Track to Working", rows);
-        int selected = dialog.Choose();
-        if(selected < 0 || selected >= pending_find_tracks_.GetCount()) return;
+
+        UiChoiceDialog dialog("Add Spotify Tracks to Working", rows, true, "Add Selected");
+        Vector<int> selected = dialog.ChooseMany();
+        if(selected.IsEmpty())
+            return;
+
         Vector<String> incoming;
-        if(IsSpotifyPublishableUri(pending_find_tracks_[selected].uri))
-            incoming.Add(pending_find_tracks_[selected].uri);
+        for(int index : selected)
+            if(index >= 0 && index < pending_find_tracks_.GetCount() && IsSpotifyPublishableUri(pending_find_tracks_[index].uri))
+                incoming.Add(pending_find_tracks_[index].uri);
         if(!ConfirmIncomingDuplicates(incoming)) {
-            last_notice_ = "Spotify search result was not added; Working was not changed.";
+            last_notice_ = "Spotify search results were not added; Working was not changed.";
             UpdateSummary();
             return;
         }
+
         MergeWorkingSource("Spotify Find");
-        working_document_.tracks.Add(EntryFromSpotify(pending_find_tracks_[selected]));
+        int added = 0;
+        for(int index : selected)
+            if(index >= 0 && index < pending_find_tracks_.GetCount()) {
+                working_document_.tracks.Add(EntryFromSpotify(pending_find_tracks_[index]));
+                added++;
+            }
+        if(added <= 0)
+            return;
         working_document_.dirty = true;
         SaveWorkingState();
         find_.SetTextUtf8(String());
-        last_notice_ = "Spotify search result added directly to Working.";
+        last_notice_ = Format("Added %d Spotify search result%s directly to Working.", added, added == 1 ? "" : "s");
         RefreshWorkingProjection(working_document_.tracks.GetCount() - 1);
         StartTrackArtworkCache();
     }
@@ -2555,6 +2605,7 @@ private:
 
 GUI_APP_MAIN
 {
+    ApplyHostSkin();
     UiThemeContext theme;
     theme.preset = APP_THEME;
     theme.mode = APP_MODE;
