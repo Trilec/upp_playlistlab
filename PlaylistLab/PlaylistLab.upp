@@ -25,12 +25,14 @@ file
 	SpotifyClientDetails.cpp,
 	SpotifyImageCache.h,
 	SpotifyImageCache.cpp,
+	PlaylistAppIdentity.h,
+	PlaylistAppIdentity.cpp,
 	PlaylistTransferList.h,
 	PlaylistHelp.h,
 	PlaylistHelp.cpp,
 	PlaylistWorkspace.cpp,
 	PlaylistResources.brc
-		depends() PlaylistWorkspace.cpp;
+		depends() PlaylistAppIdentity.cpp;
 
 mainconfig
 	"" = "GUI MT";
